@@ -5,9 +5,9 @@
 #include "lua.hpp"
 #include "TLua.hpp"
 
-void test_callback()
+void test_callback(int iv)
 {
-	std::cout << "c++ callback" << std::endl;
+	std::cout << "c++ callback " << iv << std::endl;
 }
 
 int test_callback2()

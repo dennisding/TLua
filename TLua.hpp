@@ -91,15 +91,84 @@ namespace TLua
 	using LuaCFun = int (*)(lua_State *state);
 
 	template <typename ...Types>
+	struct TypeList{};
+
+	template <int index, typename Type>
+	struct Getter
+	{
+		inline static Type GetValue(lua_State* state)
+		{
+			return (Type)lua_tonumber(state, index);
+		}
+	};
+
+	template <typename ListType, typename Value, int index>
+	struct AppendGetter
+	{
+		using List = ListType;
+	};
+
+	
+	template <typename Value, int index, typename ...ListValue>
+	struct AppendGetter<TypeList<ListValue...>, Value, index>
+	{
+		using List = TypeList<ListValue..., Getter<index + 1, Value>>;
+	};
+
+	template <typename ListType, typename ...Values>
+	struct ExtendGetter
+	{
+		using List = ListType;
+	};
+
+	template <typename ListType, typename Head, typename ...Tails>
+	struct ExtendGetter<ListType, Head, Tails...>
+	{
+		using AppendedList = typename AppendGetter<ListType, Head, 2>::List;
+		using List = typename ExtendGetter<AppendedList, Tails...>::List;
+	};
+
+	template <typename FunType, typename ...GetterType>
+	inline void DoCall(FunType fun, lua_State *state, TypeList<GetterType...> getter)
+	{
+		fun(GetterType::GetValue(state)...);
+	}
+
+	template <typename FunType, typename ...Types>
+	struct CallHelper
+	{
+		using ArgList = typename ExtendGetter<TypeList<>, Types...>::List;
+		inline static void Call(FunType fun, lua_State *state)
+		{
+			DoCall(fun, state, ArgList());
+		}
+	};
+
+//	template <typename FunType, typename Head, typename ...Tails>
+//	struct CallHelper<FunType, Head, Tails...>
+//	{
+////		using Call = CallHelper<FunType, Tails...>::Call:
+//		using ArgList = typename ExtendGetter<TypeList<>, Head>
+//		inline static void Call(FunType fun, lua_State* state)
+//		{
+//
+//		}
+//	};
+
+	template <typename ...Types>
 	int Processor(lua_State* state)
 	{
 		using FunType = void(*)(Types ...args);
 		FunType fun = (FunType)lua_touserdata(state, 2);
 
 		// unpack the argument ...
-		fun();
+//		fun();
+
+//		CallHelper<Types...>::Call(fun, state);
 		// CallHelper<FunType, Types ...>::Call(state, fun))
 		// fun(GetValue(state, 3), GetValue(state, 4), GetValue(state, 5)...)
+		// fun(getter(state), getter(state), getter(state)...)
+		CallHelper<FunType, Types...>::Call(fun, state);
 
 		return 0;
 	}
