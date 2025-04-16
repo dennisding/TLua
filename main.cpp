@@ -7,7 +7,7 @@
 #include "lua.hpp"
 #include "TLua.hpp"
 
-void test_callback(int iv, int iv2)
+void test_callback(int iv, int iv2, std::vector<int> ivv, std::map<std::string, int> im)
 {
 	std::cout << "c++ callback " << iv << " ----- " << iv2 << std::endl;
 }

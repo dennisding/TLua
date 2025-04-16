@@ -12,7 +12,12 @@ function say_hello_to(name, value, iv, im)
         print('key, value', k, v)
     end
 
-    _cpp.test_callback(100, 200)
+    local t = {111, 222, 333, 444}
+    local t2 = {}
+    t2['hello'] = 1
+    t2['word'] = 2
+
+    _cpp.test_callback(100, 200, t, t2)
     print(_cpp.test_callback2())
     return value + 1
 end

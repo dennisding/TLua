@@ -37,7 +37,7 @@ namespace TLua
 
 		lua_call(state, sizeof...(Types), 1);
 
-		return std::move(PopValue<R>(state));
+		return PopValue<R>(state);
 	}
 
 	using LuaCFun = int (*)(lua_State *state);
@@ -50,7 +50,8 @@ namespace TLua
 	{
 		inline static Type GetValue(lua_State* state)
 		{
-			return (Type)lua_tonumber(state, index);
+			// return (Type)lua_tonumber(state, index);
+			return TLua::GetValue<Type>(state, index);
 		}
 	};
 

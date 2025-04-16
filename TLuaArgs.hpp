@@ -64,40 +64,13 @@ namespace TLua
 	}
 
 	//// get values from lua state
-	//template <typename ReturnType>
-	//inline ReturnType GetValue(lua_State *state, int index = -1) {}
+	// forward declare
+	template <typename ReturnType>
+	inline ReturnType PopValue(lua_State* state);
 
-	//template <>
-	//inline bool GetValue(lua_State* state, int index)
-	//{
-	//	return lua_toboolean(state, index) != 1;
-	//}
+	template <typename ReturnType>
+	inline ReturnType GetValue(lua_State* state, int index);
 
-	//template <>
-	//inline int GetValue(lua_State* state, int index)
-	//{
-	//	return (int)lua_tointeger(state, index);
-	//}
-
-	//template <>
-	//inline float GetValue(lua_State* state, int index)
-	//{
-	//	return (float)lua_tonumber(state, index);
-	//}
-
-	//template <>
-	//inline double GetValue(lua_State* state, int index)
-	//{
-	//	return (double)lua_tonumber(state, index);
-	//}
-
-	//template <>
-	//inline std::string GetValue(lua_State* state, int index)
-	//{
-	//	return std::move(std::string(lua_tostring(state, index)));
-	//}
-
-	// template spacialize
 	template <typename ReturnType>
 	struct ValueGetter {};
 
@@ -115,7 +88,7 @@ namespace TLua
 	{
 		inline static double GetValue(lua_State* state, int index)
 		{
-			return (double)lua_tointeger(state, index);
+			return (double)lua_tonumber(state, index);
 		}
 	};
 
@@ -124,16 +97,9 @@ namespace TLua
 	{
 		inline static std::string GetValue(lua_State* state, int index)
 		{
-			return std::move(std::string(lua_tostring(state, index)));
+			return std::string(lua_tostring(state, index));
 		}
 	};
-
-	// forward declare
-	template <typename ReturnType>
-	inline ReturnType PopValue(lua_State* state);
-
-	template <typename ReturnType>
-	inline ReturnType GetValue(lua_State* state, int index);
 
 	template <typename ValueType>
 	struct ValueGetter<std::vector<ValueType>>
@@ -156,7 +122,7 @@ namespace TLua
 				lua_gettable(state, abs_index);
 				result.push_back(PopValue<ValueType>(state));
 			}
-			return std::move(result);
+			return result;
 		}
 	};
 
