@@ -1,6 +1,8 @@
 
 print("hello world!")
 
+_cpp_log(999, "this is a log from python!!!")
+
 function say_hello_to(name, value, iv, im)
     print('hello unreal!!!!'..name, value, iv)
 
@@ -42,12 +44,11 @@ function get_int_map()
     return m
 end
 
-function _register_callback(name, processor, cfun)
-    print('register a callback', name, processor, cfun)
-    _cpp = _cpp or {}
-    local function _imp(...)
---        _cpp_callback(cfun, ...)
-        _cpp_callback(processor, cfun, ...)
-    end
-    _cpp[name] = _imp
-end
+-- function _register_callback(name, processor, cfun)
+--     print('register a callback', name, processor, cfun)
+--     _cpp = _cpp or {}
+--     local function _imp(...)
+--         _cpp_callback(processor, cfun, ...)
+--     end
+--     _cpp[name] = _imp
+-- end

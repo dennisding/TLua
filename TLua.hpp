@@ -9,13 +9,14 @@ namespace TLua
 {
 	void Init();
 	void DoFile(const std::string &file_name);
+	void DoString(const char* buff);
 	lua_State* GetLuaState();
 
 	inline void Call(const std::string& name)
 	{
 		lua_State* state = GetLuaState();
 		lua_getglobal(state, name.c_str());
-		lua_call(state, 0, 0);
+		lua_pcall(state, 0, 0, 0);
 	}
 
 	template <typename ...Types>
@@ -25,7 +26,7 @@ namespace TLua
 		lua_getglobal(state, name.c_str());
 		PushValues(state, args...);
 
-		lua_call(state, sizeof...(Types), 0);
+		lua_pcall(state, sizeof...(Types), 0, 0);
 	}
 
 	template <typename R, typename ...Types>
@@ -35,7 +36,7 @@ namespace TLua
 		lua_getglobal(state, name.c_str());
 		PushValues(state, args...);
 
-		lua_call(state, sizeof...(Types), 1);
+		lua_pcall(state, sizeof...(Types), 1, 0);
 
 		return PopValue<R>(state);
 	}
@@ -143,4 +144,5 @@ namespace TLua
 		lua_call(state, 3, 0);
 	}
 
+	// bind the c++ object with lua
 }
