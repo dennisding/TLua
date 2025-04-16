@@ -19,7 +19,7 @@ namespace TLua
 	}
 
 	template <typename ...Types>
-	inline void Call(const std::string& name, Types... args)
+	inline void Call(const std::string& name, const Types&... args)
 	{
 		lua_State* state = GetLuaState();
 		lua_getglobal(state, name.c_str());
@@ -29,7 +29,7 @@ namespace TLua
 	}
 
 	template <typename R, typename ...Types>
-	inline R Call(const std::string &name, Types... args)
+	inline R Call(const std::string &name, const Types&... args)
 	{ 
 		lua_State* state = GetLuaState();
 		lua_getglobal(state, name.c_str());
