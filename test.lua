@@ -4,7 +4,7 @@ print("hello world!")
 function say_hello_to(name, value)
     print('hello unreal!!!!'..name, value)
 
-    _cpp.test_callback(100)
+    _cpp.test_callback(100, 200)
     print(_cpp.test_callback2())
     return value + 1
 end

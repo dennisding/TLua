@@ -11,54 +11,6 @@ namespace TLua
 	void DoFile(const std::string &file_name);
 	lua_State* GetLuaState();
 
-	inline void PushValue(lua_State* state, int iv)
-	{
-		lua_pushinteger(state, iv);
-	}
-
-	inline void PushValue(lua_State* state, const std::string& name)
-	{
-		lua_pushstring(state, name.c_str());
-	}
-
-	template <typename ReturnType>
-	inline ReturnType PopValue(lua_State* state)
-	{
-
-	}
-
-	template <>
-	inline int PopValue(lua_State* state)
-	{
-		double result = lua_tonumber(state, -1);
-		lua_pop(state, 1);
-		return int(result);
-	}
-
-	template <>
-	inline std::string PopValue(lua_State* state)
-	{
-		size_t size = 0;
-		const char* buff = lua_tolstring(state, -1, &size);
-		std::string result(buff);
-
-		lua_pop(state, 1);
-		return std::move(result);
-	}
-
-	template <typename Type>
-	inline void PushValues(lua_State* state, Type arg)
-	{
-		PushValue(state, arg);
-	}
-
-	template <typename First, typename ...Last>
-	inline void PushValues(lua_State* state, First first, Last ...args)
-	{
-		PushValue(state, first);
-		PushValues(state, args...);
-	}
-
 	inline void Call(const std::string& name)
 	{
 		lua_State* state = GetLuaState();
@@ -103,57 +55,43 @@ namespace TLua
 	};
 
 	template <typename ListType, typename Value, int index>
-	struct AppendGetter
-	{
-		using List = ListType;
-	};
+	struct AppendGetter {};
 
 	
 	template <typename Value, int index, typename ...ListValue>
 	struct AppendGetter<TypeList<ListValue...>, Value, index>
 	{
-		using List = TypeList<ListValue..., Getter<index + 1, Value>>;
+		using List = TypeList<ListValue..., Getter<index, Value>>;
 	};
 
-	template <typename ListType, typename ...Values>
+	template <int index, typename ListType, typename ...Values>
 	struct ExtendGetter
 	{
 		using List = ListType;
 	};
 
-	template <typename ListType, typename Head, typename ...Tails>
-	struct ExtendGetter<ListType, Head, Tails...>
+	template <int index, typename ListType, typename Head, typename ...Tails>
+	struct ExtendGetter<index, ListType, Head, Tails...>
 	{
-		using AppendedList = typename AppendGetter<ListType, Head, 2>::List;
-		using List = typename ExtendGetter<AppendedList, Tails...>::List;
+		using AppendedList = typename AppendGetter<ListType, Head, index>::List;
+		using List = typename ExtendGetter<index + 1, AppendedList, Tails...>::List;
 	};
-
-	template <typename FunType, typename ...GetterType>
-	inline void DoCall(FunType fun, lua_State *state, TypeList<GetterType...> getter)
-	{
-		fun(GetterType::GetValue(state)...);
-	}
 
 	template <typename FunType, typename ...Types>
 	struct CallHelper
 	{
-		using ArgList = typename ExtendGetter<TypeList<>, Types...>::List;
+		using ArgList = typename ExtendGetter<3, TypeList<>, Types...>::List;
 		inline static void Call(FunType fun, lua_State *state)
 		{
 			DoCall(fun, state, ArgList());
 		}
-	};
 
-//	template <typename FunType, typename Head, typename ...Tails>
-//	struct CallHelper<FunType, Head, Tails...>
-//	{
-////		using Call = CallHelper<FunType, Tails...>::Call:
-//		using ArgList = typename ExtendGetter<TypeList<>, Head>
-//		inline static void Call(FunType fun, lua_State* state)
-//		{
-//
-//		}
-//	};
+		template <typename ...GetterType>
+		inline static void DoCall(FunType fun, lua_State* state, TypeList<GetterType...> getter)
+		{
+			fun(GetterType::GetValue(state)...);
+		}
+	};
 
 	template <typename ...Types>
 	int Processor(lua_State* state)
@@ -161,13 +99,6 @@ namespace TLua
 		using FunType = void(*)(Types ...args);
 		FunType fun = (FunType)lua_touserdata(state, 2);
 
-		// unpack the argument ...
-//		fun();
-
-//		CallHelper<Types...>::Call(fun, state);
-		// CallHelper<FunType, Types ...>::Call(state, fun))
-		// fun(GetValue(state, 3), GetValue(state, 4), GetValue(state, 5)...)
-		// fun(getter(state), getter(state), getter(state)...)
 		CallHelper<FunType, Types...>::Call(fun, state);
 
 		return 0;
@@ -185,14 +116,14 @@ namespace TLua
 	}
 
 	template <typename R, typename ...Args>
-	LuaCFun GetProcessor(R(*callback)(Args...args))
+	inline LuaCFun GetProcessor(R(*callback)(Args...args))
 	{
 		// have return value
 		return &ProcessorWithReturn<R, Args...>;
 	}
 
 	template <typename ...Args>
-	LuaCFun GetProcessor(void(*callback)(Args...args))
+	inline LuaCFun GetProcessor(void(*callback)(Args...args))
 	{
 		// no return value
 		return &Processor<Args...>;

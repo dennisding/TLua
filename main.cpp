@@ -5,9 +5,9 @@
 #include "lua.hpp"
 #include "TLua.hpp"
 
-void test_callback(int iv)
+void test_callback(int iv, int iv2)
 {
-	std::cout << "c++ callback " << iv << std::endl;
+	std::cout << "c++ callback " << iv << " ----- " << iv2 << std::endl;
 }
 
 int test_callback2()
@@ -19,19 +19,6 @@ int test_callback2()
 
 void test_lua()
 {
-	//lua_State* lua = luaL_newstate();
-	//luaL_openlibs(lua);
-
-	//// call lua file
-	//if (luaL_dofile(lua, "test.lua") != 0) {
-	//	std::cout << "error" << std::endl;
-	//}
-
-	//// call lua fun
-	//lua_getglobal(lua, "say_hello_to");
-	//lua_pushstring(lua, "dennis");
-	//lua_call(lua, 1, 0);
-
 	TLua::Init();
 	TLua::DoFile("test.lua");
 
