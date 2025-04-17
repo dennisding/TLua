@@ -3,3 +3,13 @@
 function test()
     print('test fun in Test.lum')
 end
+
+Test = _class('Test')
+
+function Test:_init()
+
+end
+
+function Test:say_hello(msg)
+    print('say hello:', msg)
+end

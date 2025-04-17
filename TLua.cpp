@@ -58,9 +58,43 @@ end
 table.insert(package.searchers, 1, _load_package)
 )";
 
+const char* LuaCodeObj = R"(
+-- replace this in your cpp code
+local _cobjs = _ENV._cobjs or {}
+
+function _cpp_bind_obj(obj, class_name)
+	print('bind obj', obj, class_name)
+	local instance = _ENV[class_name]()
+	instance._obj = obj
+
+	_cobjs[obj] = instance
+end
+
+function _cpp_unbind_obj(obj)
+	print('unbind obj', obj)
+
+	assert(_cobjs[obj] ~= nil)
+	_cobjs[obj] = nil
+end
+
+function _cpp_obj_call(obj, name, ...)
+	print('cpp_call_method', obj, name, ...)
+	local instance = _cobjs[obj]
+	return instance[name](instance, ...)
+end
+
+function _cpp_obj_getattr(obj, name)
+	return _cobjs[obj][name]
+end
+
+function _cpp_obj_setattr(obj, name, value)
+	_cobjs[obj][name] = value
+end
+)";
+
 namespace TLua
 {
-	static inline bool CheckState(int r, lua_State* state)
+	bool CheckState(int r, lua_State* state)
 	{
 		if (r == LUA_OK) {
 			return true;
@@ -121,6 +155,7 @@ namespace TLua
 
 		DoString(LuaCode);			// basic code
 		DoString(LuaCodeSys);		// _sys module code
+		DoString(LuaCodeObj);		// bind the c++ and lua object
 	}
 
 	inline lua_State* GetLuaState()

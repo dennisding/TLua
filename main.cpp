@@ -7,6 +7,35 @@
 #include "lua.hpp"
 #include "TLua.hpp"
 
+class Test
+{
+public:
+	Test() : age(100)
+	{
+		TLua::Bind(this, "Test");
+	}
+
+	void test()
+	{
+		TLua::CallMethod(this, "show_info");
+		int new_age = TLua::CallMethod<int>(this, "get_info");
+
+		TLua::SetAttr(this, "age", 13);
+		TLua::GetAttr(this, "age", age);
+		TLua::SetAttr(this, "name", "new_name");
+		TLua::GetAttr(this, "name", name);
+	}
+
+	virtual ~Test()
+	{
+		TLua::Unbind(this);
+	}
+
+private:
+	int age;
+	std::string name;
+};
+
 void test_callback(int iv, int iv2, std::vector<int> ivv, std::map<std::string, int> im)
 {
 	std::cout << "c++ callback " << iv << " ----- " << iv2 << std::endl;
@@ -52,10 +81,21 @@ void test_lua()
 	std::cout << value << "---" << riv << "---" << rdv << "---" << rdv << std::endl;
 }
 
+void test_bind()
+{
+	Test* test = new Test();
+
+	test->test();
+
+	delete test;
+
+}
+
 int main(int argc, const char** argv)
 {
 
 	test_lua();
+	test_bind();
 
 	std::cout << "hello world!" << std::endl;
 

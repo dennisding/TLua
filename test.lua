@@ -44,6 +44,29 @@ function get_int_map()
     return m
 end
 
+
+function Test()
+    local t = {}
+    t.age = 3111
+    t.name = 'dennis'
+    t.set_info = function(self, age, name)
+        print("new age and name", age, name)
+        self.age = age
+        self.name = name
+    end
+
+    t.show_info = function(self)
+        print('info, age:', self.age, "  name:", self.name)
+    end
+
+    t.get_info = function(self)
+        return self.age
+    end
+
+    -- return a new instance
+    return t
+end
+
 -- function _register_callback(name, processor, cfun)
 --     print('register a callback', name, processor, cfun)
 --     _cpp = _cpp or {}

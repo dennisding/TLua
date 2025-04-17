@@ -1,4 +1,5 @@
 
+require('sys')
 require('lclass')
 require('lmodule')
 

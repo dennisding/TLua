@@ -1,4 +1,5 @@
 
+require('sys')
 
 function _import(name)
 	if _sys.modules[name] ~= nil then

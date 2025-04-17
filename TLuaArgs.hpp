@@ -26,6 +26,11 @@ namespace TLua
 		lua_pushstring(state, name.c_str());
 	}
 
+	inline void PushValue(lua_State* state, void* ptr)
+	{
+		lua_pushlightuserdata(state, ptr);
+	}
+
 	template <typename ValueType>
 	inline void PushValue(lua_State* state, std::vector<ValueType>& values)
 	{

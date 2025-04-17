@@ -11,12 +11,14 @@ namespace TLua
 	void DoFile(const std::string &file_name);
 	void DoString(const char* buff);
 	lua_State* GetLuaState();
+	bool CheckState(int r, lua_State* state);
 
 	inline void Call(const std::string& name)
 	{
 		lua_State* state = GetLuaState();
 		lua_getglobal(state, name.c_str());
-		lua_pcall(state, 0, 0, 0);
+	//	lua_pcall(state, 0, 0, 0);
+		CheckState(lua_pcall(state, 0, 0, 0), state);
 	}
 
 	template <typename ...Types>
@@ -26,7 +28,7 @@ namespace TLua
 		lua_getglobal(state, name.c_str());
 		PushValues(state, args...);
 
-		lua_pcall(state, sizeof...(Types), 0, 0);
+		CheckState(lua_pcall(state, sizeof...(Types), 0, 0), state);
 	}
 
 	template <typename R, typename ...Types>
@@ -36,7 +38,7 @@ namespace TLua
 		lua_getglobal(state, name.c_str());
 		PushValues(state, args...);
 
-		lua_pcall(state, sizeof...(Types), 1, 0);
+		CheckState(lua_pcall(state, sizeof...(Types), 1, 0), state);
 
 		return PopValue<R>(state);
 	}
@@ -145,4 +147,39 @@ namespace TLua
 	}
 
 	// bind the c++ object with lua
+	template <typename Type>
+	inline void Bind(Type* obj, const char* name)
+	{
+		Call("_cpp_bind_obj", obj, name);
+	}
+
+	template <typename Type>
+	inline void Unbind(Type* obj)
+	{
+		Call("_cpp_unbind_obj", obj);
+	}
+
+	template <typename Type, typename ...ArgTypes>
+	inline void CallMethod(Type obj, const char* name, ArgTypes... args)
+	{
+		Call("_cpp_obj_call", obj, name, args...);
+	}
+
+	template <typename ReturnType, typename Type, typename ...ArgTypes>
+	inline ReturnType CallMethod(Type obj, const char* name, ArgTypes... args)
+	{
+		return Call<ReturnType>("_cpp_obj_call", obj, name, args...);
+	}
+
+	template <typename Type, typename ReturnType>
+	void GetAttr(Type obj, const char* name, ReturnType& r)
+	{
+		r = Call<ReturnType>("_cpp_obj_getattr", obj, name);
+	}
+
+	template <typename Type, typename ValueType>
+	void SetAttr(Type obj, const char* name, ValueType value)
+	{
+		Call("_cpp_obj_setattr", obj, name, value);
+	}
 }
