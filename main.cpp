@@ -17,9 +17,9 @@ public:
 
 	void test()
 	{
-		TLua::CallMethod(this, "show_info");
 		int new_age = TLua::CallMethod<int>(this, "get_info");
 
+		// age = TLua::GetAttr<int>(this, "age") ?? can we achive this?
 		TLua::SetAttr(this, "age", 13);
 		TLua::GetAttr(this, "age", age);
 		TLua::SetAttr(this, "name", "new_name");
@@ -31,7 +31,7 @@ public:
 		TLua::Unbind(this);
 	}
 
-private:
+public:
 	int age;
 	std::string name;
 };
@@ -83,12 +83,17 @@ void test_lua()
 
 void test_bind()
 {
+	// vtable
+	TLua::VTable<Test>("Test")
+		.AddAttr("age",  &Test::age)
+		.AddAttr("name", &Test::name)
+		.AddAttr("test", &Test::test)
+		;
+
 	Test* test = new Test();
-
+	TLua::CallMethod(test, "show_info");
 	test->test();
-
 	delete test;
-
 }
 
 int main(int argc, const char** argv)

@@ -26,6 +26,11 @@ namespace TLua
 		lua_pushstring(state, name.c_str());
 	}
 
+	//inline void PushValue(lua_State* state, int (*fun)(lua_State*))
+	//{
+	//	lua_pushcfunction(state, fun);
+	//}
+
 	inline void PushValue(lua_State* state, void* ptr)
 	{
 		lua_pushlightuserdata(state, ptr);
@@ -103,6 +108,15 @@ namespace TLua
 		inline static std::string GetValue(lua_State* state, int index)
 		{
 			return std::string(lua_tostring(state, index));
+		}
+	};
+
+	template <typename Type>
+	struct ValueGetter<Type*>
+	{
+		inline static Type* GetValue(lua_State* state, int index)
+		{
+			return (Type *)lua_touserdata(state, index);
 		}
 	};
 

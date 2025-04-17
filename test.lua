@@ -57,6 +57,27 @@ function Test()
 
     t.show_info = function(self)
         print('info, age:', self.age, "  name:", self.name)
+        --call c++ code
+        -- age = self.vtable['age']
+        -- self.age = 12
+        -- vtable
+        local getter, setter = table.unpack(self._vtable['age'])
+        print('getter and setter', getter, setter)
+        print('setter', setter(self._cobj, self.age))
+        print('getter', getter(self._cobj))
+
+        local name1 = self.name
+        getter, setter = table.unpack(self._vtable['name'])
+        setter(self._cobj, 'new_name')
+        print('new name', name1, getter(self._cobj))
+
+        -- call c++ method
+        self._vtable['test'](self._cobj)
+
+        -- call cpp function
+        -- result = _call_cpp_method(self._cpp_obj, name, args...)
+        -- result = _call_cpp_method(self._cpp_obj, name, self.age, self.name)
+        -- print('call cpp method')
     end
 
     t.get_info = function(self)

@@ -19,7 +19,15 @@ static inline int CppCallback(lua_State* state)
 	return callback(state);
 }
 
+static inline int LuaSetCppAttr(lua_State* state)
+{
+	lua_CFunction callback = (lua_CFunction)lua_touserdata(state, 1);
+	return callback(state);
+}
+
 static const char *LuaCode = R"(
+-- table for c++ function callback
+_cpp = {}
 function _register_callback(name, processor, cfun)
 	_cpp = _cpp or {}
 	local function _imp(...)
@@ -60,12 +68,16 @@ table.insert(package.searchers, 1, _load_package)
 
 const char* LuaCodeObj = R"(
 -- replace this in your cpp code
+-- table for c++ object
 local _cobjs = _ENV._cobjs or {}
+-- table for vtable
+local _vtables = _ENV._vtables or {}
 
 function _cpp_bind_obj(obj, class_name)
 	print('bind obj', obj, class_name)
 	local instance = _ENV[class_name]()
-	instance._obj = obj
+	instance._cobj = obj
+	instance._vtable = _vtables[class_name]
 
 	_cobjs[obj] = instance
 end
@@ -78,7 +90,6 @@ function _cpp_unbind_obj(obj)
 end
 
 function _cpp_obj_call(obj, name, ...)
-	print('cpp_call_method', obj, name, ...)
 	local instance = _cobjs[obj]
 	return instance[name](instance, ...)
 end
@@ -89,6 +100,33 @@ end
 
 function _cpp_obj_setattr(obj, name, value)
 	_cobjs[obj][name] = value
+end
+
+-- vtable implement
+function _cpp_new_vtable(name)
+	local vt = {}
+	vt._type_name = name
+	_vtables[name] = vt
+end
+
+function _cpp_vtable_add_attr(class_name, attr_name, get_processor, getter, set_processor, setter)
+	local function _getter(self)
+		return _cpp_callback(get_processor, getter, class_name, self, attr_name)
+	end
+
+	local function _setter(self, value)
+		_cpp_callback(set_processor, setter, class_name, self, attr_name, value)
+	end
+
+	_vtables[class_name][attr_name] = { _getter, _setter}
+end
+
+function _cpp_vtable_add_method(class_name, method_name, processor, callback)
+	print('vtable add method', class_name, method_name, processor, callback)
+	local function _method(self, ...)
+		_cpp_callback(processor, callback, class_name, self, method_name, ...)
+	end
+	_vtables[class_name][method_name] = _method
 end
 )";
 
@@ -113,6 +151,9 @@ namespace TLua
 		std::string filename = GetValue<std::string>(state, -1);
 
 		std::ifstream file(filename, std::ifstream::binary);
+		if (file.fail()) {
+			return 0;
+		}
 		// get the length of file
 		file.seekg(0, file.end);
 		size_t size = file.tellg();
@@ -148,6 +189,7 @@ namespace TLua
 		// register the basic utilities
 		// internal use
 		lua_register(state, "_cpp_callback", CppCallback); // internal use, don't re register this
+		lua_register(state, "_lua_set_cpp_attr", LuaSetCppAttr); // internal use, don't re register this
 
 		// lib hook, re register this functions when needed
 		lua_register(state, "_cpp_openfile", CppOpenFile); // re register this after init when needed
