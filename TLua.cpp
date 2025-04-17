@@ -21,7 +21,6 @@ static inline int CppCallback(lua_State* state)
 
 static const char *LuaCode = R"(
 function _register_callback(name, processor, cfun)
-	print('register a callback in lua', name, processor, cfun)
 	_cpp = _cpp or {}
 	local function _imp(...)
 		_cpp_callback(processor, cfun, ...)
@@ -30,8 +29,51 @@ function _register_callback(name, processor, cfun)
 end
 )";
 
+static const char* LuaCodeSys = R"(
+_sys = _sys or {}
+_sys.paths = {'', 'Script/Lua/', 'Script/Lua/Entities/', 'Script/Lua/Libs/', 'Script/Lua/Common/'}
+_sys.suffix = '.lua'
+_sys.module_suffix = '.lum'
+_sys.modules = {}
+_sys.file_reader = function (name)
+	local file = io.open(name)
+	if file == nil then
+		return nil
+	end
+	local content = file:read('*all')
+	file:close()
+	return content
+end
+
+-- modify the require 
+local function _load_package(name)
+	for _, path in ipairs(_sys.paths) do
+		local file_name = path .. name .. _sys.suffix
+		local content = _sys.file_reader(file_name)
+		if content ~= nil then
+			return load(content, file_name)
+		end
+	end
+end
+table.insert(package.searchers, 1, _load_package)
+)";
+
 namespace TLua
 {
+	static inline bool CheckState(int r, lua_State* state)
+	{
+		if (r == LUA_OK) {
+			return true;
+		}
+
+		int index = lua_gettop(state);
+		lua_getglobal(state, "_cpp_log");
+		lua_pushinteger(state, 1);
+		lua_pushvalue(state, index);
+		lua_pcall(state, 2, 0, 0);
+		return false;
+	}
+
 	static int CppOpenFile(lua_State* state)
 	{
 		std::string filename = GetValue<std::string>(state, -1);
@@ -70,11 +112,15 @@ namespace TLua
 	{
 		lua_State* state = GetLuaState();
 		// register the basic utilities
-		lua_register(state, "_cpp_callback", CppCallback);
+		// internal use
+		lua_register(state, "_cpp_callback", CppCallback); // internal use, don't re register this
+
+		// lib hook, re register this functions when needed
 		lua_register(state, "_cpp_openfile", CppOpenFile); // re register this after init when needed
 		lua_register(state, "_cpp_log", CppLog); // re register this after init when needed
 
-		DoString(LuaCode);
+		DoString(LuaCode);			// basic code
+		DoString(LuaCodeSys);		// _sys module code
 	}
 
 	inline lua_State* GetLuaState()
@@ -86,13 +132,13 @@ namespace TLua
 	void DoFile(const std::string& file_name)
 	{
 		lua_State* state = GetLuaState();
-		luaL_dofile(state, file_name.c_str());
+		CheckState(luaL_dofile(state, file_name.c_str()), state);
 	}
 
 	void DoString(const char* buffer)
 	{
 		lua_State* state = GetLuaState();
-		luaL_loadstring(state, buffer);
-		lua_pcall(state, 0, 0, 0);
+		CheckState(luaL_loadstring(state, buffer), state);
+		CheckState(lua_pcall(state, 0, 0, 0), state);
 	}
 }

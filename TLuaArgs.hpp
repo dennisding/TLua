@@ -114,7 +114,7 @@ namespace TLua
 			// get table length
 			lua_len(state, abs_index);
 			int table_size = (int)lua_tointeger(state, -1);
-			lua_pop(state, 1);
+			lua_pop(state, 1); // pop the tointeger
 
 			ReturnType result;
 			for (size_t i = 1; i <= table_size; ++i) {

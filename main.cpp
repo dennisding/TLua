@@ -22,6 +22,7 @@ int test_callback2()
 void test_lua()
 {
 	TLua::Init();
+	TLua::DoFile("Script/Lua/init.lua");
 	TLua::DoFile("test.lua");
 
 	using int_vector = std::vector<int>;

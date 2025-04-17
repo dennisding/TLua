@@ -1,7 +1,7 @@
 
 print("hello world!")
 
-_cpp_log(999, "this is a log from python!!!")
+_cpp_log(999, "this is a log from lua!!!")
 
 function say_hello_to(name, value, iv, im)
     print('hello unreal!!!!'..name, value, iv)
