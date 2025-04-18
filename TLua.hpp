@@ -14,16 +14,16 @@ namespace TLua
 	lua_State* GetLuaState();
 	bool CheckState(int r, lua_State* state);
 
-	inline void Call(const std::string& name)
-	{
-		lua_State* state = GetLuaState();
-		lua_getglobal(state, name.c_str());
-	//	lua_pcall(state, 0, 0, 0);
-		CheckState(lua_pcall(state, 0, 0, 0), state);
-	}
+	//inline void Call(const std::string& name)
+	//{
+	//	lua_State* state = GetLuaState();
+	//	lua_getglobal(state, name.c_str());
+	////	lua_pcall(state, 0, 0, 0);
+	//	CheckState(lua_pcall(state, 0, 0, 0), state);
+	//}
 
 	template <typename ...Types>
-	inline void Call(const std::string& name, const Types&... args)
+	inline void Call(std::string&& name, Types&&... args)
 	{
 		lua_State* state = GetLuaState();
 		lua_getglobal(state, name.c_str());
@@ -33,7 +33,7 @@ namespace TLua
 	}
 
 	template <typename R, typename ...Types>
-	inline R Call(const std::string &name, const Types&... args)
+	inline R Call(std::string &&name, Types&&... args)
 	{ 
 		lua_State* state = GetLuaState();
 		lua_getglobal(state, name.c_str());
