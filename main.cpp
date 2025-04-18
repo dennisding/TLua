@@ -4,7 +4,6 @@
 #include <vector>
 #include <iostream>
 
-#include "lua.hpp"
 #include "TLua.hpp"
 
 class Test

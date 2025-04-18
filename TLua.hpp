@@ -2,7 +2,7 @@
 
 #include <string>
 #include <functional>
-#include "lua.hpp"
+#include "Lua/lua.hpp"
 
 #include "TLuaArgs.hpp"
 

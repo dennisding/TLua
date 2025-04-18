@@ -3,7 +3,6 @@
 #include <fstream>
 #include <iostream>
 
-#include "lua.hpp"
 #include "TLua.hpp"
 
 static inline lua_State* NewLuaState()
