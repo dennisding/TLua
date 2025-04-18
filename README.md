@@ -46,28 +46,28 @@
              .AddAttr(&Test::test)
            ;
 '''
-    3. bind the c++ object to lua object
+    2. bind the c++ object to lua object
  '''cpp
         TLua::Bind(this, "Test");
 '''
-    4. unbind the c++ object when c++ object is deleted
+    3. unbind the c++ object when c++ object is deleted
 '''cpp        
         TLua::Unbind(this);
 '''
-    5. access the lua attributes
+    4. access the lua attributes
 '''cpp
         TLua::SetAttr(this, name, value)
         TLua::GetAttr(this, name, return_value)
 '''
-    7. call the lua object method
+    5. call the lua object method
 '''cpp
         ReturnType result = TLua::CallMethod<ReturnType>(this, name, args...);
 '''
-    8. call the cpp object method
+    6. call the cpp object method
 '''lua
         local result = _cpp_callback(self._cobj, self._typename, args...)
 '''
-    9. access the cpp attributes
+    7. access the cpp attributes
 '''lua
        local getter, setter = table.unpack(self._vtable[attr_name])
        local value = getter(self._cobj)
