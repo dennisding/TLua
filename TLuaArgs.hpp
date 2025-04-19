@@ -26,18 +26,13 @@ namespace TLua
 		lua_pushstring(state, name.c_str());
 	}
 
-	//inline void PushValue(lua_State* state, int (*fun)(lua_State*))
-	//{
-	//	lua_pushcfunction(state, fun);
-	//}
-
 	inline void PushValue(lua_State* state, void* ptr)
 	{
 		lua_pushlightuserdata(state, ptr);
 	}
 
 	template <typename ValueType>
-	inline void PushValue(lua_State* state, std::vector<ValueType>& values)
+	inline void PushValue(lua_State* state, const std::vector<ValueType>& values)
 	{
 		lua_newtable(state);
 		for (int i = 0; i < values.size(); ++i) {
@@ -48,7 +43,7 @@ namespace TLua
 	}
 
 	template <typename KeyType, typename ValueType>
-	inline void PushValue(lua_State* state, std::map<KeyType, ValueType>& values)
+	inline void PushValue(lua_State* state, const std::map<KeyType, ValueType>& values)
 	{
 		lua_newtable(state);
 		for (auto &iter : values) {
@@ -61,13 +56,13 @@ namespace TLua
 	inline void PushValues(lua_State* state) {}
 
 	template <typename Type>
-	inline void PushValues(lua_State* state, Type arg)
+	inline void PushValues(lua_State* state, const Type &arg)
 	{
 		PushValue(state, arg);
 	}
 
 	template <typename First, typename ...Last>
-	inline void PushValues(lua_State* state, First first, Last ...args)
+	inline void PushValues(lua_State* state, const First &first, const Last& ...args)
 	{
 		PushValue(state, first);
 		PushValues(state, args...);

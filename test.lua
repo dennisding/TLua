@@ -72,7 +72,7 @@ function Test()
         print('new name', name1, getter(self._cobj))
 
         -- call c++ method
-        self._vtable['test'](self._cobj)
+        self._vtable['test'](self._cobj, "hihi")
 
         -- call cpp function
         -- result = _call_cpp_method(self._cpp_obj, name, args...)

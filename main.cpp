@@ -23,6 +23,8 @@ public:
 		TLua::GetAttr(this, "age", age);
 		TLua::SetAttr(this, "name", "new_name");
 		TLua::GetAttr(this, "name", name);
+
+        std::string name = TLua::GetAttr<std::string>(this, "name");
 	}
 
 	virtual ~Test()
@@ -35,9 +37,14 @@ public:
 	std::string name;
 };
 
-void test_callback(int iv, int iv2, std::vector<int> ivv, std::map<std::string, int> im)
+void test_callback(int iv, int iv2, const std::vector<int> &ivv, const std::map<std::string, int> &im)
 {
 	std::cout << "c++ callback " << iv << " ----- " << iv2 << std::endl;
+}
+
+void test_callback3(const std::string &name)
+{
+
 }
 
 int test_callback2()
@@ -68,6 +75,7 @@ void test_lua()
 
 	TLua::RegisterCallback("test_callback", test_callback);
 	TLua::RegisterCallback("test_callback2", test_callback2);
+    TLua::RegisterCallback("test_callback3", test_callback3);
 
 	std::string value = TLua::Call<std::string>("say_hello_to", "dennis", 1024, iv, im);
 	int riv = TLua::Call<int>("get_int_value");
@@ -83,7 +91,7 @@ void test_lua()
 void test_bind()
 {
 	// vtable
-	TLua::VTable<Test>("Test")
+	TLua::VTableImp<Test>("Test")
 		.AddAttr("age",  &Test::age)
 		.AddAttr("name", &Test::name)
 		.AddAttr("test", &Test::test)
