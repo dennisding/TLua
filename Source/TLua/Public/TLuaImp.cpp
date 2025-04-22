@@ -235,9 +235,105 @@ namespace TLua
 		lua_getglobal(state, name);
 	}
 
-	void LuaCall(lua_State* state, int arg_num)
+	void LuaCall(lua_State* state, int arg_num, int return_num)
 	{
-		CheckState(lua_pcall(state, arg_num, 0, 0), state);
+		CheckState(lua_pcall(state, arg_num, return_num, 0), state);
+	}
+
+	int LuaGetTop(lua_State* state)
+	{
+		return lua_gettop(state);
+	}
+
+	void LuaError(lua_State* state, const char* msg)
+	{
+		lua_pushstring(state, msg);
+		lua_error(state);
+	}
+
+
+	void* LuaGetUserData(lua_State* state, int index)
+	{
+		return lua_touserdata(state, index);
+	}
+
+	int LuaGetInteger(lua_State* state, int index)
+	{
+		return lua_tointeger(state, index);
+	}
+	double LuaGetNumber(lua_State* state, int index)
+	{
+		return lua_tonumber(state, index);
+	}
+	std::string LuaGetString(lua_State* state, int index)
+	{
+		return std::string(lua_tostring(state, index));
+	}
+
+	void LuaNewTable(lua_State* state)
+	{
+		lua_newtable(state);
+	}
+
+	void LuaSetTable(lua_State* state, int index)
+	{
+		lua_settable(state, index);
+	}
+
+	void LuaGetTable(lua_State* state, int index)
+	{
+		lua_gettable(state, index);
+	}
+
+	void LuaLen(lua_State* state, int index)
+	{
+		lua_len(state, index);
+	}
+
+	int LuaNext(lua_State* state, int index)
+	{
+		return lua_next(state, index);
+	}
+
+	void LuaPop(lua_State* state, int num)
+	{
+		lua_pop(state, num);
+	}
+
+	int LuaAbsIndex(lua_State* state, int index)
+	{
+		return lua_absindex(state, index);
+	}
+
+	// push the value
+	//void LuaPushInteger(Lua_State* state, int iv)
+	//{
+
+	//}
+
+	void LuaPushInteger(lua_State* state, int iv)
+	{
+		lua_pushinteger(state, iv);
+	}
+
+	void LuaPushNumber(lua_State* state, double number)
+	{
+		lua_pushnumber(state, number);
+	}
+
+	void LuaPushString(lua_State* state, const char* str)
+	{
+		lua_pushstring(state, str);
+	}
+
+	void LuaPushUserData(lua_State* state, void* user_data)
+	{
+		lua_pushlightuserdata(state, user_data);
+	}
+
+	void LuaPushNil(lua_State* state)
+	{
+		lua_pushnil(state);
 	}
 }
 

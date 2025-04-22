@@ -16,7 +16,9 @@ namespace TLua
 	TLua_API bool CheckState(int r, lua_State* state);
 	TLua_API void RegisterCallback(const char *name, void* processor, void* callback);
 	TLua_API void LuaGetGlobal(lua_State* state, const char *name);
-	TLua_API void LuaCall(lua_State* state, int arg_num);
+	TLua_API void LuaCall(lua_State* state, int arg_num, int return_num = 0);
+	TLua_API int LuaGetTop(lua_State* state);
+	TLua_API void LuaError(lua_State* state, const char* msg);
 
 	template <typename ...Types>
 	void Call(const char *name, const Types&... args)
@@ -33,13 +35,15 @@ namespace TLua
 	}
 
 	template <typename R, typename ...Types>
-	R Call(std::string &&name, const Types&... args)
+	R Call(const char *name, const Types&... args)
 	{ 
 		lua_State* state = GetLuaState();
-		lua_getglobal(state, name.c_str());
+		// lua_getglobal(state, name.c_str());
+		LuaGetGlobal(state, name);
 		PushValues(state, args...);
 
-		CheckState(lua_pcall(state, sizeof...(Types), 1, 0), state);
+//		CheckState(lua_pcall(state, sizeof...(Types), 1, 0), state);
+		LuaCall(state, sizeof...(Types), 1);
 
 		return PopValue<R>(state);
 	}
@@ -88,9 +92,8 @@ namespace TLua
         using ArgList = typename ExtendGetter<3, TypeList<>, Types...>::List;
 		static ReturnType Call(FunType fun, lua_State *state)
 		{
-			if (lua_gettop(state) != sizeof...(Types) + 2) {
-				lua_pushstring(state, "invalid function argument");
-				lua_error(state);
+			if (LuaGetTop(state) != sizeof...(Types) + 2) {
+				LuaError(state, "invalid function argument");
 				return ReturnType();
 			}
 
@@ -108,7 +111,8 @@ namespace TLua
 	int Processor(lua_State* state)
 	{
 		using FunType = void(*)(Types... args);
-		FunType fun = (FunType)lua_touserdata(state, 2);
+//		FunType fun = (FunType)lua_touserdata(state, 2);
+		FunType fun = GetValue<FunType>(state, 2);
 
 		CallHelper<void, FunType, Types...>::Call(fun, state);
 
@@ -119,7 +123,8 @@ namespace TLua
 	int ProcessorWithReturn(lua_State* state)
 	{
 		using FunType = ReturnType(*)(Types... args);
-		FunType fun = (FunType)lua_touserdata(state, 2);
+		// FunType fun = (FunType)lua_touserdata(state, 2);
+		FunType fun = GetValue<FunType>(state, 2);
 
 		PushValue(state, CallHelper<ReturnType, FunType, Types...>::Call(fun, state));
 
