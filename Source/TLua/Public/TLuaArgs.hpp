@@ -14,7 +14,6 @@ namespace TLua
 	TLua_API const char* LuaGetLString(lua_State* state, int index, size_t& size);
 
 	// push value
-//	TLua_API void LuaPushInteger(Lua_State* state, int iv);
 	TLua_API void LuaPushInteger(lua_State* state, int iv);
 	TLua_API void LuaPushNumber(lua_State* state, double number);
 	TLua_API void LuaPushString(lua_State* state, const char* str);
@@ -34,26 +33,22 @@ namespace TLua
 	// push cpp value to lua state
 	inline void PushValue(lua_State* state, int iv)
 	{
-		// lua_pushinteger(state, iv);
 		LuaPushInteger(state, iv);
 	}
 
 	inline void PushValue(lua_State* state, double value)
 	{
 		LuaPushNumber(state, value);
-	//	lua_pushnumber(state, value);
 	}
 
 	inline void PushValue(lua_State* state, const char* buff)
 	{
 		LuaPushString(state, buff);
-//		lua_pushstring(state, buff);
 	}
 
 	inline void PushValue(lua_State* state, const std::string& name)
 	{
 		LuaPushString(state, name.c_str());
-//		lua_pushstring(state, name.c_str());
 	}
 
 	inline void PushValue(lua_State* state, void* ptr)
@@ -79,13 +74,10 @@ namespace TLua
 	template <typename ValueType>
 	inline void PushValue(lua_State* state, const std::vector<ValueType>& values)
 	{
-//		lua_newtable(state);
 		LuaNewTable(state);
 		for (int i = 0; i < values.size(); ++i) {
-//			lua_pushnumber(state, i + 1); // push key
 			PushValue(state, i + 1);
 			PushValue(state, values[i]); // push value
-			// lua_settable(state, -3);
 			LuaSetTable(state, -3);
 		}
 	}
@@ -93,12 +85,10 @@ namespace TLua
 	template <typename KeyType, typename ValueType>
 	inline void PushValue(lua_State* state, const std::map<KeyType, ValueType>& values)
 	{
-		// lua_newtable(state);
 		LuaNewTable(state);
 		for (auto &iter : values) {
 			PushValue(state, iter.first);
 			PushValue(state, iter.second);
-			//lua_settable(state, -3);
 			LuaSetTable(state, -3);
 		}
 	}
@@ -153,7 +143,6 @@ namespace TLua
 		inline static std::string GetValue(lua_State* state, int index)
 		{
 			return LuaGetString(state, index);
-			// return std::string(lua_tostring(state, index));
 		}
 	};
 
@@ -173,7 +162,6 @@ namespace TLua
 	{
 		inline static Type* GetValue(lua_State* state, int index)
 		{
-			//return (Type *)lua_touserdata(state, index);
 			return (Type *)LuaGetUserData(state, index);
 		}
 	};
@@ -190,7 +178,6 @@ namespace TLua
 
 			// get table length
 			LuaLen(state, abs_index);
-			// int table_size = TLua::GetValue<int>(state, -1);
 			int table_size = PopValue<int>(state);
 
 			ReturnType result;
@@ -198,7 +185,6 @@ namespace TLua
 			for (size_t i = 1; i <= table_size; ++i) {
 				PushValue(state, i);
 				LuaGetTable(state, abs_index);
-//				result.push_back(PopValue<ValueType>(state));
 				result.Emplace(PopValue<ValueType>(state));
 			}
 			return result;
@@ -224,7 +210,6 @@ namespace TLua
 			for (size_t i = 1; i <= table_size; ++i) {
 				PushValue(state, i);
 				LuaGetTable(state, abs_index);
-				// result.push_back(PopValue<ValueType>(state));
 				result.emplace_back(PopValue<ValueType>(state));
 			}
 			return result;
@@ -240,15 +225,9 @@ namespace TLua
 		{
 			ReturnType result;
 
-			// int abs_index = lua_absindex(state, index);
 			int abs_index = LuaAbsIndex(state, index);
-			// lua_pushnil(state); // first key
 			LuaPushNil(state);
-//			while (lua_next(state, abs_index) != 0) {
 			while (LuaNext(state, abs_index) != 0) {
-				//ValueType value = PopValue<ValueType>(state);
-				//KeyType key = TLua::GetValue<KeyType>(state, -1);
-				//result[key] = value;
 				KeyType key = TLua::GetValue<KeyType>(state, -2);
 				result.emplace(std::make_pair(key, PopValue<ValueType>(state)));
 			}

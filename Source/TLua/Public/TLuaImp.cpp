@@ -60,9 +60,7 @@ _sys.paths = {_text('')}
 _sys.suffix = _text('.lua')
 _sys.module_suffix = _text('.lum')
 _sys.modules = {}
-_sys.read_file = function (name)
-	return _cpp_open_file(name)
-end
+_sys.read_file = _cpp_open_file
 
 -- modify the require 
 local function _load_package(name)
@@ -164,34 +162,10 @@ namespace TLua
 
 	static int CppOpenFile(lua_State* state)
 	{
-		//std::string filename = GetValue<std::string>(state, -1);
-
-		//std::ifstream file(filename, std::ifstream::binary);
-		//if (file.fail()) {
-		//	return 0;
-		//}
-		//// get the length of file
-		//file.seekg(0, file.end);
-		//size_t size = file.tellg();
-		//file.seekg(0, file.beg);
-
-		//char* buffer = new char[size + 1];
-		//buffer[size] = 0;
-
-		//file.read(buffer, size);
-
-		//// read the file as string
-		//lua_pushlstring(state, buffer, size);
-
-		//delete []buffer;
-		//file.close();
-		// FString path = FPaths::ProjectDir() / TEXT("init.lua");
 		auto path = GetValue<FString>(state, 1);
 		TArray<uint8> content;
 
 		if (FFileHelper::LoadFileToArray(content, *path)){
-			// file loaded
-		//	lua_pushlstring(state, content, content.Size)
 			lua_pushlstring(state, (const char *)content.GetData(), content.NumBytes());
 			return 1;
 		}
@@ -202,10 +176,6 @@ namespace TLua
 
 	static int CppLog(lua_State* state)
 	{
-		//int logLevel = GetValue<int>(state, 1);
-		//std::string msg = GetValue<std::string>(state, 2);
-
-		//std::cout << "Log:" << logLevel << ":" << msg << std::endl;
 		int level = GetValue<int>(state, 1);
 		const char* msg = GetValue<const char*>(state, 2);
 
@@ -361,12 +331,6 @@ namespace TLua
 	{
 		return lua_absindex(state, index);
 	}
-
-	// push the value
-	//void LuaPushInteger(Lua_State* state, int iv)
-	//{
-
-	//}
 
 	void LuaPushInteger(lua_State* state, int iv)
 	{

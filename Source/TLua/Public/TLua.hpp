@@ -29,22 +29,15 @@ namespace TLua
 		LuaGetGlobal(state, name);
 		PushValues(state, args...);
 		LuaCall(state, sizeof...(Types));
-		//lua_State* state = GetLuaState();
-		//lua_getglobal(state, name.c_str());
-		//PushValues(state, args...);
-
-		//CheckState(lua_pcall(state, sizeof...(Types), 0, 0), state);
 	}
 
 	template <typename R, typename ...Types>
 	R Call(const char *name, const Types&... args)
 	{ 
 		lua_State* state = GetLuaState();
-		// lua_getglobal(state, name.c_str());
 		LuaGetGlobal(state, name);
 		PushValues(state, args...);
 
-//		CheckState(lua_pcall(state, sizeof...(Types), 1, 0), state);
 		LuaCall(state, sizeof...(Types), 1);
 
 		return PopValue<R>(state);
@@ -113,7 +106,6 @@ namespace TLua
 	int Processor(lua_State* state)
 	{
 		using FunType = void(*)(Types... args);
-//		FunType fun = (FunType)lua_touserdata(state, 2);
 		FunType fun = GetValue<FunType>(state, 2);
 
 		CallHelper<void, FunType, Types...>::Call(fun, state);
