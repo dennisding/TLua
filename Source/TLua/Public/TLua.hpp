@@ -4,6 +4,8 @@
 #include <type_traits>
 #include <functional>
 
+#include "CoreMinimal.h"
+
 #include "Lua/lua.hpp"
 #include "TLuaArgs.hpp"
 

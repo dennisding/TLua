@@ -3,6 +3,11 @@
 #include <fstream>
 #include <iostream>
 
+#include "TLua.h"
+#include "CoreMinimal.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+
 #include "TLua.hpp"
 
 static inline lua_State* NewLuaState()
@@ -26,43 +31,55 @@ static inline int LuaSetCppAttr(lua_State* state)
 
 static const char *LuaCode = R"(
 -- table for c++ function callback
-_cpp = {}
+_cpp = {}		-- all cpp function register here
+_texts = {}		-- utf8 to utf16 cache
 function _register_callback(name, processor, cfun)
 	_cpp = _cpp or {}
 	local function _imp(...)
-		_cpp_callback(processor, cfun, ...)
+		return _cpp_callback(processor, cfun, ...)
 	end
 	_cpp[name] = _imp
+end
+
+function _text(str)
+	local text = _texts[str]
+	if text ~= nil then
+		return text
+	end
+
+	text = _cpp_utf8_to_utf16(str)
+	_texts[str] = text
+	return text
 end
 )";
 
 static const char* LuaCodeSys = R"(
-_sys = _sys or {}
-_sys.paths = {'', 'Script/Lua/', 'Script/Lua/Entities/', 'Script/Lua/Libs/', 'Script/Lua/Common/'}
-_sys.suffix = '.lua'
-_sys.module_suffix = '.lum'
+_sys = _sys
+_sys.root = _text('')
+_sys.paths = {_text('')}
+_sys.suffix = _text('.lua')
+_sys.module_suffix = _text('.lum')
 _sys.modules = {}
-_sys.file_reader = function (name)
-	local file = io.open(name)
-	if file == nil then
-		return nil
-	end
-	local content = file:read('*all')
-	file:close()
-	return content
+_sys.read_file = function (name)
+	return _cpp_open_file(name)
 end
 
 -- modify the require 
 local function _load_package(name)
 	for _, path in ipairs(_sys.paths) do
-		local file_name = path .. name .. _sys.suffix
-		local content = _sys.file_reader(file_name)
+		local file_name = _sys.root .. path .. name .. _sys.suffix
+		local content = _cpp_open_file(file_name)
 		if content ~= nil then
 			return load(content, file_name)
 		end
 	end
 end
 table.insert(package.searchers, 1, _load_package)
+
+function _init_sys(root, dirs)
+	_sys.root = root
+	_sys.paths = dirs
+end
 )";
 
 const char* LuaCodeObj = R"(
@@ -147,39 +164,66 @@ namespace TLua
 
 	static int CppOpenFile(lua_State* state)
 	{
-		std::string filename = GetValue<std::string>(state, -1);
+		//std::string filename = GetValue<std::string>(state, -1);
 
-		std::ifstream file(filename, std::ifstream::binary);
-		if (file.fail()) {
+		//std::ifstream file(filename, std::ifstream::binary);
+		//if (file.fail()) {
+		//	return 0;
+		//}
+		//// get the length of file
+		//file.seekg(0, file.end);
+		//size_t size = file.tellg();
+		//file.seekg(0, file.beg);
+
+		//char* buffer = new char[size + 1];
+		//buffer[size] = 0;
+
+		//file.read(buffer, size);
+
+		//// read the file as string
+		//lua_pushlstring(state, buffer, size);
+
+		//delete []buffer;
+		//file.close();
+		// FString path = FPaths::ProjectDir() / TEXT("init.lua");
+		auto path = GetValue<FString>(state, 1);
+		TArray<uint8> content;
+
+		if (FFileHelper::LoadFileToArray(content, *path)){
+			// file loaded
+		//	lua_pushlstring(state, content, content.Size)
+			lua_pushlstring(state, (const char *)content.GetData(), content.NumBytes());
+			return 1;
+		}
+		else {
 			return 0;
 		}
-		// get the length of file
-		file.seekg(0, file.end);
-		size_t size = file.tellg();
-		file.seekg(0, file.beg);
-
-		char* buffer = new char[size + 1];
-		buffer[size] = 0;
-
-		file.read(buffer, size);
-
-		// read the file as string
-		lua_pushlstring(state, buffer, size);
-
-		delete []buffer;
-		file.close();
-
-		return 1;
 	}
 
 	static int CppLog(lua_State* state)
 	{
-		int logLevel = GetValue<int>(state, 1);
-		std::string msg = GetValue<std::string>(state, 2);
+		//int logLevel = GetValue<int>(state, 1);
+		//std::string msg = GetValue<std::string>(state, 2);
 
-		std::cout << "Log:" << logLevel << ":" << msg << std::endl;
+		//std::cout << "Log:" << logLevel << ":" << msg << std::endl;
+		int level = GetValue<int>(state, 1);
+		const char* msg = GetValue<const char*>(state, 2);
+
+		UE_LOG(Lua, Warning, TEXT("%hs"), msg);
 
 		return 0;
+	}
+
+	// _text function in lua
+	static int CppText(lua_State* state)
+	{
+		size_t size = 0;
+		UTF8CHAR* buff = (UTF8CHAR *)lua_tolstring(state, 0, &size);
+
+		FUTF8ToTCHAR converter(buff);
+		lua_pop(state, 1); // pop the buff
+		lua_pushlstring(state, (const char*)converter.Get(), converter.Length());
+		return 1;
 	}
 
 	void Init()
@@ -189,9 +233,10 @@ namespace TLua
 		// internal use
 		lua_register(state, "_cpp_callback", CppCallback); // internal use, don't re register this
 		lua_register(state, "_lua_set_cpp_attr", LuaSetCppAttr); // internal use, don't re register this
+		lua_register(state, "_cpp_utf8_to_utf16", CppText);
 
 		// lib hook, re register this functions when needed
-		lua_register(state, "_cpp_openfile", CppOpenFile); // re register this after init when needed
+		lua_register(state, "_cpp_open_file", CppOpenFile); // re register this after init when needed
 		lua_register(state, "_cpp_log", CppLog); // re register this after init when needed
 
 		DoString(LuaCode);			// basic code
@@ -208,7 +253,14 @@ namespace TLua
 	void DoFile(const char* file_name)
 	{
 		lua_State* state = GetLuaState();
-		CheckState(luaL_dofile(state, file_name), state);
+		FString path = FPaths::ProjectDir() / file_name;
+		TArray<uint8> content;
+
+		if (FFileHelper::LoadFileToArray(content, *path)) {
+			// file loaded
+			lua_pushlstring(state, (const char*)content.GetData(), content.Num());
+			LuaCall(state, 0, 0);
+		}
 	}
 
 	void DoString(const char* buffer)
@@ -270,6 +322,11 @@ namespace TLua
 		return std::string(lua_tostring(state, index));
 	}
 
+	const char* LuaGetLString(lua_State* state, int index, size_t &size)
+	{
+		return lua_tolstring(state, index, &size);
+	}
+
 	void LuaNewTable(lua_State* state)
 	{
 		lua_newtable(state);
@@ -324,6 +381,11 @@ namespace TLua
 	void LuaPushString(lua_State* state, const char* str)
 	{
 		lua_pushstring(state, str);
+	}
+
+	void LuaPushLString(lua_State* state, const char* str, int size)
+	{
+		lua_pushlstring(state, str, size);
 	}
 
 	void LuaPushUserData(lua_State* state, void* user_data)

@@ -4,6 +4,8 @@
 
 #include "Modules/ModuleManager.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(Lua, Log, All);
+
 class FTLuaModule : public IModuleInterface
 {
 public:

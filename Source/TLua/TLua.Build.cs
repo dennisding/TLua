@@ -30,7 +30,6 @@ public class TLua : ModuleRules
 				"Core",
 				"TLuaLibrary",
 				"Projects",
-				"Core",
 				"Engine"
 				// ... add other public dependencies that you statically link with here ...
 			}

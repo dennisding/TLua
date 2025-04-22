@@ -3,18 +3,22 @@
 #include <map>
 #include <vector>
 
+#include "CoreMinimal.h"
+
 namespace TLua
 {
 	TLua_API void* LuaGetUserData(lua_State* state, int index);
 	TLua_API int LuaGetInteger(lua_State* state, int index);
 	TLua_API double LuaGetNumber(lua_State* state, int index);
 	TLua_API std::string LuaGetString(lua_State* state, int index);
+	TLua_API const char* LuaGetLString(lua_State* state, int index, size_t& size);
 
 	// push value
 //	TLua_API void LuaPushInteger(Lua_State* state, int iv);
 	TLua_API void LuaPushInteger(lua_State* state, int iv);
 	TLua_API void LuaPushNumber(lua_State* state, double number);
 	TLua_API void LuaPushString(lua_State* state, const char* str);
+	TLua_API void LuaPushLString(lua_State* state, const char *buff, int size);
 	TLua_API void LuaPushUserData(lua_State* state, void *user_data);
 	TLua_API void LuaPushNil(lua_State* state);
 
@@ -55,7 +59,21 @@ namespace TLua
 	inline void PushValue(lua_State* state, void* ptr)
 	{
 		LuaPushUserData(state, ptr);
-//		lua_pushlightuserdata(state, ptr);
+	}
+
+	inline void PushValue(lua_State* state, const FString& str)
+	{
+		LuaPushLString(state, (const char*)(*str), str.NumBytesWithoutNull());
+	}
+
+	inline void PushValue(lua_State* state, const TArray<FString>& values)
+	{
+		LuaNewTable(state);
+		for (int i = 0; i < values.Num(); ++i) {
+			PushValue(state, i + 1);
+			PushValue(state, values[i]);
+			LuaSetTable(state, -3);
+		}
 	}
 
 	template <typename ValueType>
@@ -139,6 +157,17 @@ namespace TLua
 		}
 	};
 
+	template <>
+	struct ValueGetter<FString>
+	{
+		inline static FString GetValue(lua_State* state, int index)
+		{
+			size_t size = 0;
+			const uint8* buff = (const uint8*)LuaGetLString(state, index, size);
+			return FString::FromBlob(buff, size);
+		}
+	};
+
 	template <typename Type>
 	struct ValueGetter<Type*>
 	{
@@ -150,6 +179,33 @@ namespace TLua
 	};
 
 	template <typename ValueType>
+	struct ValueGetter<TArray<ValueType>>
+	{
+		using ReturnType = TArray<ValueType>;
+
+		inline static ReturnType GetValue(lua_State* state, int index)
+		{
+			// check this is a table
+			int abs_index = LuaAbsIndex(state, index);
+
+			// get table length
+			LuaLen(state, abs_index);
+			// int table_size = TLua::GetValue<int>(state, -1);
+			int table_size = PopValue<int>(state);
+
+			ReturnType result;
+			result.Reserve(table_size);
+			for (size_t i = 1; i <= table_size; ++i) {
+				PushValue(state, i);
+				LuaGetTable(state, abs_index);
+//				result.push_back(PopValue<ValueType>(state));
+				result.Emplace(PopValue<ValueType>(state));
+			}
+			return result;
+		}
+	};
+
+	template <typename ValueType>
 	struct ValueGetter<std::vector<ValueType>>
 	{
 		using ReturnType = std::vector<ValueType>;
@@ -157,23 +213,19 @@ namespace TLua
 		inline static ReturnType GetValue(lua_State* state, int index)
 		{
 			// check this is a table
-			// int abs_index = lua_absindex(state, index);
 			int abs_index = LuaAbsIndex(state, index);
 			
 			// get table length
 			LuaLen(state, abs_index);
-			int table_size = TLua::GetValue<int>(state, -1);
-			// lua_len(state, abs_index);
-			// int table_size = (int)lua_tointeger(state, -1);
-			// lua_pop(state, 1); // pop the tointeger
+			int table_size = PopValue<int>(state);
 
 			ReturnType result;
+			result.reserve(table_size);
 			for (size_t i = 1; i <= table_size; ++i) {
 				PushValue(state, i);
 				LuaGetTable(state, abs_index);
-				//lua_pushinteger(state, i);
-				//lua_gettable(state, abs_index);
-				result.push_back(PopValue<ValueType>(state));
+				// result.push_back(PopValue<ValueType>(state));
+				result.emplace_back(PopValue<ValueType>(state));
 			}
 			return result;
 		}
@@ -194,9 +246,11 @@ namespace TLua
 			LuaPushNil(state);
 //			while (lua_next(state, abs_index) != 0) {
 			while (LuaNext(state, abs_index) != 0) {
-				ValueType value = PopValue<ValueType>(state);
-				KeyType key = TLua::GetValue<KeyType>(state, -1);
-				result[key] = value;
+				//ValueType value = PopValue<ValueType>(state);
+				//KeyType key = TLua::GetValue<KeyType>(state, -1);
+				//result[key] = value;
+				KeyType key = TLua::GetValue<KeyType>(state, -2);
+				result.emplace(std::make_pair(key, PopValue<ValueType>(state)));
 			}
 
 			return result;
@@ -214,7 +268,6 @@ namespace TLua
 	inline ReturnType PopValue(lua_State* state) 
 	{
 		ReturnType result = ValueGetter<ReturnType>::GetValue(state, -1);
-//		lua_pop(state, 1);
 		LuaPop(state, 1);
 
 		return result;
