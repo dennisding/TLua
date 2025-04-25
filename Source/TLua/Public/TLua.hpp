@@ -12,8 +12,8 @@
 namespace TLua
 {
 	TLua_API void Init();
-	TLua_API void DoFile(const char *name);
-	TLua_API void DoString(const char* buff);
+	TLua_API void DoFile(const FString &name);
+	TLua_API void DoString(const char* buff, const char* name = nullptr);
 	TLua_API lua_State* GetLuaState();
 	TLua_API bool CheckState(int r, lua_State* state);
 	TLua_API void RegisterCallback(const char *name, void* processor, void* callback);
@@ -26,6 +26,7 @@ namespace TLua
 	void Call(const char *name, const Types&... args)
 	{
 		lua_State* state = GetLuaState();
+
 		LuaGetGlobal(state, name);
 		PushValues(state, args...);
 		LuaCall(state, sizeof...(Types));
@@ -35,6 +36,7 @@ namespace TLua
 	R Call(const char *name, const Types&... args)
 	{ 
 		lua_State* state = GetLuaState();
+
 		LuaGetGlobal(state, name);
 		PushValues(state, args...);
 
@@ -42,6 +44,14 @@ namespace TLua
 
 		return PopValue<R>(state);
 	}
+
+	//inline void TraceCall(const char* name)
+	//{
+	//	lua_State* state = GetLuaState();
+	//	lua_getglobal(state, "trace_call");
+	//	lua_getglobal(state, name);
+	//	lua_pcall(state, 1, 0, 0);
+	//}
 
 	using LuaCFun = int (*)(lua_State *state);
 
@@ -247,17 +257,30 @@ namespace TLua
 	template <typename Type>
 	std::string VTableImp<Type>::name_;
 
+	//template <typename Type>
+	//void Bind(Type* obj, const char* name)
+	//{
+	//	Call("_cpp_bind_obj", obj, name);
+	//}
+
 	template <typename Type>
-	void Bind(Type* obj, const char* name)
+	void BindToLuaObj(const Type* obj, const char* name)
 	{
-		Call("_cpp_bind_obj", obj, name);
+	//	FString class_name = ;
+		Call("_lua_bind_cpp_object", obj, obj->StaticClass()->GetName(), name);
 	}
 
 	template <typename Type>
-	void Unbind(Type* obj)
+	void UnbindLua(Type* obj)
 	{
-		Call("_cpp_unbind_obj", obj);
+
 	}
+
+	//template <typename Type>
+	//void Unbind(Type* obj)
+	//{
+	//	Call("_cpp_unbind_obj", obj);
+	//}
 
 	template <typename Type, typename ...ArgTypes>
 	void CallMethod(Type obj, const char* name, ArgTypes... args)

@@ -18,16 +18,21 @@ DEFINE_LOG_CATEGORY(Lua);
 
 void FTLuaModule::StartupModule()
 {
-	FString root = FPaths::ProjectContentDir() / TEXT("Script/Lua/");
 	TLua::Init();
 
 	TArray<FString> dirs;
-	dirs.Add(TEXT("/")); // current dir
+	dirs.Add(TEXT("")); // current dir
 	dirs.Add(TEXT("Libs/"));
 	dirs.Add(TEXT("Actors/"));
 	dirs.Add(TEXT("Common/"));
 
+	FString root = FPaths::ProjectContentDir() / TEXT("Script/Lua/");
+	//FString root = TEXT("/Game/Script/Lua/");
 	TLua::Call("_init_sys", root, dirs);
+
+	FString initFileName = FPaths::ProjectContentDir() / TEXT("Script/Lua/init.lua");
+	TLua::DoFile(initFileName);
+//	TLua::Call("init");
 }
 
 void FTLuaModule::ShutdownModule()

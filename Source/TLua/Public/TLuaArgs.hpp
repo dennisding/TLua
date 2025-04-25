@@ -51,9 +51,9 @@ namespace TLua
 		LuaPushString(state, name.c_str());
 	}
 
-	inline void PushValue(lua_State* state, void* ptr)
+	inline void PushValue(lua_State* state, const void* ptr)
 	{
-		LuaPushUserData(state, ptr);
+		LuaPushUserData(state, (void *)ptr);
 	}
 
 	inline void PushValue(lua_State* state, const FString& str)
@@ -152,8 +152,9 @@ namespace TLua
 		inline static FString GetValue(lua_State* state, int index)
 		{
 			size_t size = 0;
-			const uint8* buff = (const uint8*)LuaGetLString(state, index, size);
-			return FString::FromBlob(buff, size);
+			const TCHAR* buff = (const TCHAR*)LuaGetLString(state, index, size);
+
+			return FString(size/sizeof(TCHAR), buff);
 		}
 	};
 

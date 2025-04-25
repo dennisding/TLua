@@ -1,5 +1,6 @@
 
 
+#include <cstring>
 #include <fstream>
 #include <iostream>
 
@@ -51,28 +52,94 @@ function _text(str)
 	_texts[str] = text
 	return text
 end
+
+function trace_call(fun, ...)
+	print(_text('trace_call'), towstring(fun))
+	local function _handler(msg)
+		return debug.traceback(msg)
+	end
+
+	local ok, msg = xpcall(fun, _handler, ...)
+	if not ok then
+		_log.warning(utf8_to_utf16(msg))
+	end
+	print(_text('trace_call end'), towstring(fun))
+end
 )";
 
 static const char* LuaCodeSys = R"(
-_sys = _sys
+_sys = {}
 _sys.root = _text('')
 _sys.paths = {_text('')}
 _sys.suffix = _text('.lua')
 _sys.module_suffix = _text('.lum')
-_sys.modules = {}
-_sys.read_file = _cpp_open_file
+_sys.loaded = {} -- use for require
+_sys.modules = {} -- use for reloade
+_sys.read_file = _cpp_read_file
 
--- modify the require 
-local function _load_package(name)
+-- modify the require
+local function _format_args(...)
+	local t = {}
+	for k, v in ipairs{...} do
+		t[k] = towstring(v)
+	end
+	return table.concat(t, _text('    '))
+end
+
+-- redefined in Libs/log.lua
+function print(...)
+	_cpp_log(1, _format_args(...))
+end
+
+-- redefined in Libs/log.lua
+function warning(...)
+	_cpp_log(2, _format_args(...))
+end
+-- to utf16 string
+function towstring(obj)
+	if type(obj) == 'string' then
+		return obj
+	end
+
+	return _cpp_utf8_to_utf16(tostring(obj))
+end
+
+utf8_to_utf16 = _cpp_utf8_to_utf16
+utf16_to_utf8 = _cpp_utf16_to_utf8
+
+-- modify the default behavior
+function require(name)
+	local module = _sys.loaded[name]
+	if module ~= nil then
+		return module
+	end
+
+	local display_name = utf16_to_utf8(name .. _sys.suffix)
 	for _, path in ipairs(_sys.paths) do
 		local file_name = _sys.root .. path .. name .. _sys.suffix
-		local content = _cpp_open_file(file_name)
-		if content ~= nil then
-			return load(content, file_name)
+
+		print(_text('do file!!!!!'), file_name)
+		local module = dofile(file_name, display_name)
+		print(_text('do file end-----'))
+		if module ~= nil then
+			_sys.modules[name] = module
 		end
 	end
 end
-table.insert(package.searchers, 1, _load_package)
+
+function dofile(file_name, display_name)
+	local content = _cpp_read_file(file_name)
+	if content == nil then
+		return nil
+	end
+	local chunk, msg = load(content, display_name, 'bt')
+	if not chunk then
+		_log.warning(utf8_to_utf16(msg))
+	end
+	
+	local result = chunk() or {}
+	return result
+end
 
 function _init_sys(root, dirs)
 	_sys.root = root
@@ -146,52 +213,80 @@ end
 
 namespace TLua
 {
-	bool CheckState(int r, lua_State* state)
+
+	static void CppLog(int level, const FString& msg)
 	{
-		if (r == LUA_OK) {
-			return true;
+		if (level == 2) {
+			UE_LOG(Lua, Warning, TEXT("%s"), *msg);
 		}
-
-		int index = lua_gettop(state);
-		lua_getglobal(state, "_cpp_log");
-		lua_pushinteger(state, 1);
-		lua_pushvalue(state, index);
-		lua_pcall(state, 2, 0, 0);
-		return false;
-	}
-
-	static int CppOpenFile(lua_State* state)
-	{
-		auto path = GetValue<FString>(state, 1);
-		TArray<uint8> content;
-
-		if (FFileHelper::LoadFileToArray(content, *path)){
-			lua_pushlstring(state, (const char *)content.GetData(), content.NumBytes());
-			return 1;
+		else if (level == 4) {
+			UE_LOG(Lua, Error, TEXT("%s"), *msg);
 		}
 		else {
-			return 0;
+			UE_LOG(Lua, Display, TEXT("%s"), *msg);
 		}
 	}
 
 	static int CppLog(lua_State* state)
 	{
 		int level = GetValue<int>(state, 1);
-		const char* msg = GetValue<const char*>(state, 2);
+		FString msg = GetValue<FString>(state, 2);
 
-		UE_LOG(Lua, Warning, TEXT("%hs"), msg);
+		// check the level definition in Libs/log.lua
+		CppLog(level, msg);
 
 		return 0;
 	}
 
-	// _text function in lua
-	static int CppText(lua_State* state)
+	bool CheckState(int r, lua_State* state)
 	{
-		size_t size = 0;
-		UTF8CHAR* buff = (UTF8CHAR *)lua_tolstring(state, 0, &size);
+		if (r == LUA_OK) {
+			return true;
+		}
+
+		if (!lua_isstring(state, -1)) {
+			return false;
+		}
+
+		// convert utf8 to utf16
+		UTF8CHAR* buff = (UTF8CHAR*)lua_tostring(state, -1);
+		FUTF8ToTCHAR converter(buff);
+		CppLog(4, converter.Get());
+
+		return false;
+	}
+
+	static int CppReadFile(lua_State* state)
+	{
+		auto path = GetValue<FString>(state, 1);
+		TArray<uint8> content;
+
+		if (FFileHelper::LoadFileToArray(content, *path, FILEREAD_Silent)){
+			lua_pushlstring(state, (const char *)content.GetData(), content.NumBytes());
+		}
+		else {
+			lua_pushnil(state);
+		}
+		return 1;
+	}
+
+	// _text function in lua
+	static int CppUTF8_TO_UTF16(lua_State* state)
+	{
+		UTF8CHAR* buff = (UTF8CHAR *)lua_tostring(state, 1);
 
 		FUTF8ToTCHAR converter(buff);
-		lua_pop(state, 1); // pop the buff
+		size_t size = converter.Length() * sizeof(TCHAR);
+		//lua_pop(state, 1); // pop the buff
+		lua_pushlstring(state, (const char*)converter.Get(), size);
+		return 1;
+	}
+
+	static int CppUTF16_TO_UTF8(lua_State* state)
+	{
+		// TCHAR* buff = (TCHAR*)lua_tolstring(state, 1, &size);
+		FString name = GetValue<FString>(state, 1);
+		FTCHARToUTF8 converter(name);
 		lua_pushlstring(state, (const char*)converter.Get(), converter.Length());
 		return 1;
 	}
@@ -203,15 +298,17 @@ namespace TLua
 		// internal use
 		lua_register(state, "_cpp_callback", CppCallback); // internal use, don't re register this
 		lua_register(state, "_lua_set_cpp_attr", LuaSetCppAttr); // internal use, don't re register this
-		lua_register(state, "_cpp_utf8_to_utf16", CppText);
+		lua_register(state, "_cpp_utf8_to_utf16", CppUTF8_TO_UTF16);
+		lua_register(state, "_cpp_utf16_to_utf8", CppUTF16_TO_UTF8);
 
 		// lib hook, re register this functions when needed
-		lua_register(state, "_cpp_open_file", CppOpenFile); // re register this after init when needed
+		lua_register(state, "_cpp_read_file", CppReadFile); // re register this after init when needed
 		lua_register(state, "_cpp_log", CppLog); // re register this after init when needed
 
-		DoString(LuaCode);			// basic code
-		DoString(LuaCodeSys);		// _sys module code
-		DoString(LuaCodeObj);		// bind the c++ and lua object
+		DoString(LuaCode, "basic");			// basic code
+		DoString(LuaCodeSys, "sys");		// _sys module code
+//		DoString(LuaCodeObj);		// bind the c++ and lua object
+
 	}
 
 	inline lua_State* GetLuaState()
@@ -220,24 +317,28 @@ namespace TLua
 		return state;
 	}
 
-	void DoFile(const char* file_name)
+	void DoFile(const FString &name)
 	{
 		lua_State* state = GetLuaState();
-		FString path = FPaths::ProjectDir() / file_name;
-		TArray<uint8> content;
 
-		if (FFileHelper::LoadFileToArray(content, *path)) {
-			// file loaded
-			lua_pushlstring(state, (const char*)content.GetData(), content.Num());
-			LuaCall(state, 0, 0);
-		}
+		FTCHARToUTF8 conveter(FPaths::GetCleanFilename(name));
+		// call the dofile in lua
+		lua_getglobal(state, "trace_call");
+		lua_getglobal(state, "dofile");
+		PushValue(state, name);
+		PushValue(state, conveter.Get());
+		CheckState(lua_pcall(state, 3, 0, 0), state);
 	}
 
-	void DoString(const char* buffer)
+	void DoString(const char* buffer, const char* name)
 	{
 		lua_State* state = GetLuaState();
-		CheckState(luaL_loadstring(state, buffer), state);
-		CheckState(lua_pcall(state, 0, 0, 0), state);
+		size_t size = strlen(buffer);
+		
+		if (CheckState(luaL_loadbufferx(state, buffer, size, name, "bt"), state))
+		{
+			LuaCall(state, 0, 0);
+		}
 	}
 
 	void RegisterCallback(const char* name, void* processor, void* callback)
@@ -273,7 +374,6 @@ namespace TLua
 		lua_error(state);
 	}
 
-
 	void* LuaGetUserData(lua_State* state, int index)
 	{
 		return lua_touserdata(state, index);
@@ -283,10 +383,12 @@ namespace TLua
 	{
 		return lua_tointeger(state, index);
 	}
+
 	double LuaGetNumber(lua_State* state, int index)
 	{
 		return lua_tonumber(state, index);
 	}
+
 	std::string LuaGetString(lua_State* state, int index)
 	{
 		return std::string(lua_tostring(state, index));
