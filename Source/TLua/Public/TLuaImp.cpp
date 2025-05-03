@@ -289,6 +289,25 @@ namespace TLua
 		return 1;
 	}
 
+	static void LoadPrimaryLuaFile(lua_State* state, const FString& basicFileName, const std::string& displayName)
+	{
+		TArray<uint8> content;
+
+		if (!FFileHelper::LoadFileToArray(content, *basicFileName, FILEREAD_Silent)) {
+			UE_LOG(Lua, Error, TEXT("Error in reading basic file[%s]!"), *basicFileName);
+			return;
+		}
+
+		// do the primary string
+		lua_getglobal(state, "load"); // load
+		lua_pushlstring(state, (const char*)content.GetData(), content.NumBytes()); // load(chunk
+		lua_pushstring(state, displayName.c_str());
+		lua_pushstring(state, "bt");
+		
+		CheckState(lua_pcall(state, 3, 1, 0), state);
+		CheckState(lua_pcall(state, 0, 0, 0), state);
+	}
+
 	void Init()
 	{
 		lua_State* state = GetLuaState();
@@ -303,9 +322,15 @@ namespace TLua
 		lua_register(state, "_cpp_read_file", CppReadFile); // re register this after init when needed
 		lua_register(state, "_cpp_log", CppLog); // re register this after init when needed
 
-		DoString(LuaCode, "basic");			// basic code
-		DoString(LuaCodeSys, "sys");		// _sys module code
+		FString basicFileName = FPaths::ProjectContentDir() / TEXT("Script/Lua/Libs/basic.lua");
+		FString sysFileName = FPaths::ProjectContentDir() / TEXT("Script/Lua/Libs/sys.lua");
+		LoadPrimaryLuaFile(state, basicFileName, "basic.lua");
+		LoadPrimaryLuaFile(state, sysFileName, "sys.lua");
+
+		//DoString(LuaCode, "basic");			// basic code
+		//DoString(LuaCodeSys, "sys");		// _sys module code
 //		DoString(LuaCodeObj);		// bind the c++ and lua object
+		
 
 	}
 
