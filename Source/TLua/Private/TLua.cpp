@@ -32,7 +32,7 @@ void FTLuaModule::StartupModule()
 
 	FString initFileName = FPaths::ProjectContentDir() / TEXT("Script/Lua/init.lua");
 	TLua::DoFile(initFileName);
-//	TLua::Call("init");
+	TLua::Call("init");
 }
 
 void FTLuaModule::ShutdownModule()

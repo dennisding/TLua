@@ -9,6 +9,8 @@
 #include "Lua/lua.hpp"
 #include "TLuaArgs.hpp"
 
+#define TLUA_TRACE_CALL_NAME "trace_call"
+
 namespace TLua
 {
 	TLua_API void Init();
@@ -26,21 +28,24 @@ namespace TLua
 	void Call(const char *name, const Types&... args)
 	{
 		lua_State* state = GetLuaState();
+		lua_checkstack(state, sizeof...(Types) + 2);
 
+		LuaGetGlobal(state, TLUA_TRACE_CALL_NAME);
 		LuaGetGlobal(state, name);
 		PushValues(state, args...);
-		LuaCall(state, sizeof...(Types));
+		LuaCall(state, sizeof...(Types) + 1);
 	}
 
 	template <typename R, typename ...Types>
 	R Call(const char *name, const Types&... args)
 	{ 
 		lua_State* state = GetLuaState();
+		lua_checkstack(state, sizeof...(Types) + 2);
 
+		LuaGetGlobal(state, TLUA_TRACE_CALL_NAME);
 		LuaGetGlobal(state, name);
 		PushValues(state, args...);
-
-		LuaCall(state, sizeof...(Types), 1);
+		LuaCall(state, sizeof...(Types) + 1, 1);
 
 		return PopValue<R>(state);
 	}

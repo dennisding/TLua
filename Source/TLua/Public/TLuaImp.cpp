@@ -54,7 +54,6 @@ function _text(str)
 end
 
 function trace_call(fun, ...)
-	print(_text('trace_call'), towstring(fun))
 	local function _handler(msg)
 		return debug.traceback(msg)
 	end
@@ -63,7 +62,6 @@ function trace_call(fun, ...)
 	if not ok then
 		_log.warning(utf8_to_utf16(msg))
 	end
-	print(_text('trace_call end'), towstring(fun))
 end
 )";
 
@@ -118,9 +116,7 @@ function require(name)
 	for _, path in ipairs(_sys.paths) do
 		local file_name = _sys.root .. path .. name .. _sys.suffix
 
-		print(_text('do file!!!!!'), file_name)
 		local module = dofile(file_name, display_name)
-		print(_text('do file end-----'))
 		if module ~= nil then
 			_sys.modules[name] = module
 		end
@@ -249,10 +245,12 @@ namespace TLua
 		}
 
 		// convert utf8 to utf16
-		UTF8CHAR* buff = (UTF8CHAR*)lua_tostring(state, -1);
-		FUTF8ToTCHAR converter(buff);
+		size_t size = 0;
+		UTF8CHAR* buff = (UTF8CHAR*)lua_tolstring(state, -1, &size);
+		FUTF8ToTCHAR converter(buff, size);
 		CppLog(4, converter.Get());
-
+		// pop the message
+		lua_pop(state, 1);
 		return false;
 	}
 
@@ -273,9 +271,10 @@ namespace TLua
 	// _text function in lua
 	static int CppUTF8_TO_UTF16(lua_State* state)
 	{
-		UTF8CHAR* buff = (UTF8CHAR *)lua_tostring(state, 1);
+		size_t utf8_size = 0;
+		UTF8CHAR* buff = (UTF8CHAR *)lua_tolstring(state, 1, &utf8_size);
 
-		FUTF8ToTCHAR converter(buff);
+		FUTF8ToTCHAR converter(buff, utf8_size);
 		size_t size = converter.Length() * sizeof(TCHAR);
 		//lua_pop(state, 1); // pop the buff
 		lua_pushlstring(state, (const char*)converter.Get(), size);
@@ -284,7 +283,6 @@ namespace TLua
 
 	static int CppUTF16_TO_UTF8(lua_State* state)
 	{
-		// TCHAR* buff = (TCHAR*)lua_tolstring(state, 1, &size);
 		FString name = GetValue<FString>(state, 1);
 		FTCHARToUTF8 converter(name);
 		lua_pushlstring(state, (const char*)converter.Get(), converter.Length());
@@ -321,12 +319,13 @@ namespace TLua
 	{
 		lua_State* state = GetLuaState();
 
-		FTCHARToUTF8 conveter(FPaths::GetCleanFilename(name));
+		FTCHARToUTF8 converter(FPaths::GetCleanFilename(name));
 		// call the dofile in lua
 		lua_getglobal(state, "trace_call");
 		lua_getglobal(state, "dofile");
 		PushValue(state, name);
-		PushValue(state, conveter.Get());
+		lua_pushlstring(state, converter.Get(), converter.Length());
+
 		CheckState(lua_pcall(state, 3, 0, 0), state);
 	}
 
