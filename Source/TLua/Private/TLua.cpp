@@ -45,6 +45,24 @@ void FTLuaModule::ShutdownModule()
 	ExampleLibraryHandle = nullptr;
 }
 
+class FLuaProcessor : public FSelfRegisteringExec
+{
+	virtual bool Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDevice& Ar) override
+	{
+		FString FullCommand(Cmd);
+
+		if (!FullCommand.StartsWith(TEXT("lua"))) {
+			return false;
+		}
+
+		// send the command line to string
+		TLua::Call("_lua_process_console_command", FullCommand);
+		return true;
+	}
+};
+
+static FLuaProcessor LuaProcessor;
+
 #undef LOCTEXT_NAMESPACE
 	
 IMPLEMENT_MODULE(FTLuaModule, TLua)
