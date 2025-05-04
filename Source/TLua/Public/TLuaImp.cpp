@@ -300,7 +300,7 @@ namespace TLua
 
 		// do the primary string
 		lua_getglobal(state, "load"); // load
-		lua_pushlstring(state, (const char*)content.GetData(), content.NumBytes()); // load(chunk
+		lua_pushlstring(state, (const char*)content.GetData(), content.NumBytes()); // load chunk
 		lua_pushstring(state, displayName.c_str());
 		lua_pushstring(state, "bt");
 		
