@@ -347,7 +347,7 @@ namespace TLua
 		FTCHARToUTF8 converter(FPaths::GetCleanFilename(name));
 		// call the dofile in lua
 		lua_getglobal(state, "trace_call");
-		lua_getglobal(state, "dofile");
+		lua_getglobal(state, "_lua_dofile");
 		PushValue(state, name);
 		lua_pushlstring(state, converter.Get(), converter.Length());
 
