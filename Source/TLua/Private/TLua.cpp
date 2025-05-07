@@ -24,7 +24,9 @@ void FTLuaModule::StartupModule()
 	dirs.Add(TEXT("")); // current dir
 	dirs.Add(TEXT("Libs/"));
 	dirs.Add(TEXT("Actors/"));
-	dirs.Add(TEXT("Common/"));
+	dirs.Add(TEXT("Unreal/"));
+	dirs.Add(TEXT("Game/"));
+	dirs.Add(TEXT("GameLibs/"));
 
 	FString root = FPaths::ProjectContentDir() / TEXT("Script/Lua/");
 	//FString root = TEXT("/Game/Script/Lua/");

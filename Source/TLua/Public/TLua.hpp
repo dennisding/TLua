@@ -25,10 +25,10 @@ namespace TLua
 	TLua_API void LuaError(lua_State* state, const char* msg);
 
 	template <typename ...Types>
-	void Call(const char *name, const Types&... args)
+	inline void Call(const char *name, const Types&... args)
 	{
 		lua_State* state = GetLuaState();
-		lua_checkstack(state, sizeof...(Types) + 2);
+		//lua_checkstack(state, sizeof...(Types) + 2);
 
 		LuaGetGlobal(state, TLUA_TRACE_CALL_NAME);
 		LuaGetGlobal(state, name);
@@ -37,7 +37,7 @@ namespace TLua
 	}
 
 	template <typename R, typename ...Types>
-	R Call(const char *name, const Types&... args)
+	inline R Call(const char *name, const Types&... args)
 	{ 
 		lua_State* state = GetLuaState();
 		lua_checkstack(state, sizeof...(Types) + 2);
@@ -49,14 +49,6 @@ namespace TLua
 
 		return PopValue<R>(state);
 	}
-
-	//inline void TraceCall(const char* name)
-	//{
-	//	lua_State* state = GetLuaState();
-	//	lua_getglobal(state, "trace_call");
-	//	lua_getglobal(state, name);
-	//	lua_pcall(state, 1, 0, 0);
-	//}
 
 	using LuaCFun = int (*)(lua_State *state);
 
