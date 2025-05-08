@@ -8,8 +8,10 @@
 #include "CoreMinimal.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "UObject/UObjectGlobals.h"
 
 #include "TLua.hpp"
+#include "TLuaCppLua.hpp"
 
 static inline lua_State* NewLuaState()
 {
@@ -29,183 +31,6 @@ static inline int LuaSetCppAttr(lua_State* state)
 	lua_CFunction callback = (lua_CFunction)lua_touserdata(state, 1);
 	return callback(state);
 }
-
-static const char *LuaCode = R"(
--- table for c++ function callback
-_cpp = {}		-- all cpp function register here
-_texts = {}		-- utf8 to utf16 cache
-function _register_callback(name, processor, cfun)
-	_cpp = _cpp or {}
-	local function _imp(...)
-		return _cpp_callback(processor, cfun, ...)
-	end
-	_cpp[name] = _imp
-end
-
-function _text(str)
-	local text = _texts[str]
-	if text ~= nil then
-		return text
-	end
-
-	text = _cpp_utf8_to_utf16(str)
-	_texts[str] = text
-	return text
-end
-
-function trace_call(fun, ...)
-	local function _handler(msg)
-		return debug.traceback(msg)
-	end
-
-	local ok, msg = xpcall(fun, _handler, ...)
-	if not ok then
-		_log.warning(utf8_to_utf16(msg))
-	end
-end
-)";
-
-static const char* LuaCodeSys = R"(
-_sys = {}
-_sys.root = _text('')
-_sys.paths = {_text('')}
-_sys.suffix = _text('.lua')
-_sys.module_suffix = _text('.lum')
-_sys.loaded = {} -- use for require
-_sys.modules = {} -- use for reloade
-_sys.read_file = _cpp_read_file
-
--- modify the require
-local function _format_args(...)
-	local t = {}
-	for k, v in ipairs{...} do
-		t[k] = towstring(v)
-	end
-	return table.concat(t, _text('    '))
-end
-
--- redefined in Libs/log.lua
-function print(...)
-	_cpp_log(1, _format_args(...))
-end
-
--- redefined in Libs/log.lua
-function warning(...)
-	_cpp_log(2, _format_args(...))
-end
--- to utf16 string
-function towstring(obj)
-	if type(obj) == 'string' then
-		return obj
-	end
-
-	return _cpp_utf8_to_utf16(tostring(obj))
-end
-
-utf8_to_utf16 = _cpp_utf8_to_utf16
-utf16_to_utf8 = _cpp_utf16_to_utf8
-
--- modify the default behavior
-function require(name)
-	local module = _sys.loaded[name]
-	if module ~= nil then
-		return module
-	end
-
-	local display_name = utf16_to_utf8(name .. _sys.suffix)
-	for _, path in ipairs(_sys.paths) do
-		local file_name = _sys.root .. path .. name .. _sys.suffix
-
-		local module = dofile(file_name, display_name)
-		if module ~= nil then
-			_sys.modules[name] = module
-		end
-	end
-end
-
-function dofile(file_name, display_name)
-	local content = _cpp_read_file(file_name)
-	if content == nil then
-		return nil
-	end
-	local chunk, msg = load(content, display_name, 'bt')
-	if not chunk then
-		_log.warning(utf8_to_utf16(msg))
-	end
-	
-	local result = chunk() or {}
-	return result
-end
-
-function _init_sys(root, dirs)
-	_sys.root = root
-	_sys.paths = dirs
-end
-)";
-
-const char* LuaCodeObj = R"(
--- replace this in your cpp code
--- table for c++ object
-local _cobjs = _ENV._cobjs or {}
--- table for vtable
-local _vtables = _ENV._vtables or {}
-
-function _cpp_bind_obj(obj, class_name)
-	print('bind obj', obj, class_name)
-	local instance = _ENV[class_name]()
-	instance._cobj = obj
-	instance._vtable = _vtables[class_name]
-
-	_cobjs[obj] = instance
-end
-
-function _cpp_unbind_obj(obj)
-	print('unbind obj', obj)
-
-	assert(_cobjs[obj] ~= nil)
-	_cobjs[obj] = nil
-end
-
-function _cpp_obj_call(obj, name, ...)
-	local instance = _cobjs[obj]
-	return instance[name](instance, ...)
-end
-
-function _cpp_obj_getattr(obj, name)
-	return _cobjs[obj][name]
-end
-
-function _cpp_obj_setattr(obj, name, value)
-	_cobjs[obj][name] = value
-end
-
--- vtable implement
-function _cpp_new_vtable(name)
-	local vt = {}
-	vt._type_name = name
-	_vtables[name] = vt
-end
-
-function _cpp_vtable_add_attr(class_name, attr_name, get_processor, getter, set_processor, setter)
-	local function _getter(self)
-		return _cpp_callback(get_processor, getter, class_name, self, attr_name)
-	end
-
-	local function _setter(self, value)
-		_cpp_callback(set_processor, setter, class_name, self, attr_name, value)
-	end
-
-	_vtables[class_name][attr_name] = { _getter, _setter}
-end
-
-function _cpp_vtable_add_method(class_name, method_name, processor, callback)
-	print('vtable add method', class_name, method_name, processor, callback)
-	local function _method(self, ...)
-		_cpp_callback(processor, callback, class_name, self, method_name, ...)
-	end
-	_vtables[class_name][method_name] = _method
-end
-)";
 
 namespace TLua
 {
@@ -327,11 +152,7 @@ namespace TLua
 		LoadPrimaryLuaFile(state, basicFileName, "basic.lua");
 		LoadPrimaryLuaFile(state, sysFileName, "sys.lua");
 
-		//DoString(LuaCode, "basic");			// basic code
-		//DoString(LuaCodeSys, "sys");		// _sys module code
-//		DoString(LuaCodeObj);		// bind the c++ and lua object
-		
-
+		RegisterCppLua();
 	}
 
 	inline lua_State* GetLuaState()
@@ -365,7 +186,7 @@ namespace TLua
 		}
 	}
 
-	void RegisterCallback(const char* name, void* processor, void* callback)
+	void RegisterCallbackImp(const char* name, void* processor, void* callback)
 	{
 		lua_State* state = GetLuaState();
 

@@ -11,6 +11,7 @@
 #include "Misc/FileHelper.h"
 
 #include "TLua.hpp"
+#include "CoreMinimal.h"
 
 #define LOCTEXT_NAMESPACE "FTLuaModule"
 
@@ -35,6 +36,12 @@ void FTLuaModule::StartupModule()
 	FString initFileName = FPaths::ProjectContentDir() / TEXT("Script/Lua/init.lua");
 	TLua::DoFile(initFileName);
 	TLua::Call("init");
+
+	//FString ClassName(TEXT("/Script/CppLua.CppLuaCharacter"));
+	//UClass* Class = LoadObject<UClass>(nullptr, *ClassName);
+	//if (Class) {
+	//	UE_LOG(Lua, Error, TEXT("FIND NAME: %s"), *(Class->GetPathName()));
+	//}
 }
 
 void FTLuaModule::ShutdownModule()

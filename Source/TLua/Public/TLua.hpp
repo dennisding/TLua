@@ -18,7 +18,7 @@ namespace TLua
 	TLua_API void DoString(const char* buff, const char* name = nullptr);
 	TLua_API lua_State* GetLuaState();
 	TLua_API bool CheckState(int r, lua_State* state);
-	TLua_API void RegisterCallback(const char *name, void* processor, void* callback);
+	TLua_API void RegisterCallbackImp(const char *name, void* processor, void* callback);
 	TLua_API void LuaGetGlobal(lua_State* state, const char *name);
 	TLua_API void LuaCall(lua_State* state, int arg_num, int return_num = 0);
 	TLua_API int LuaGetTop(lua_State* state);
@@ -148,7 +148,7 @@ namespace TLua
 	template <typename R, typename ...Args>
 	void RegisterCallback(const char* name, R(*callback)(Args... args))
 	{
-		RegisterCallback(name, GetProcessor(callback), callback);
+		RegisterCallbackImp(name, GetProcessor(callback), callback);
 	}
 
 	// bind the c++ object with lua

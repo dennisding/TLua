@@ -28,6 +28,7 @@ public class TLua : ModuleRules
 			new string[]
 			{
 				"Core",
+                "CoreUObject",
 				"TLuaLibrary",
 				"Projects",
 				"Engine"
