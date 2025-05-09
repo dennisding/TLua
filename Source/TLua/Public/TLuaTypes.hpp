@@ -103,7 +103,6 @@ namespace TLua
 			FName Name(Size/sizeof(TCHAR), Buff);
 
 			return Name;
-//			return FName(Buff, Size/sizeof(TCHAR));
 		}
 
 		inline static void PushValue(lua_State* State, const FName& Name)
@@ -143,7 +142,6 @@ namespace TLua
 			Type result;
 			result.Reserve(table_size);
 			for (int i = 1; i <= table_size; ++i) {
-				// TLua::PushValue(state, i);
 				TypeInfo<int>::PushValue(state, i);
 				LuaGetTable(state, abs_index);
 				result.Emplace(PopValue<ValueType>(state));
@@ -163,14 +161,21 @@ namespace TLua
 	};
 
 	template <typename Type>
-	inline auto AutoConvert(const Type& value) { return value; }
+	inline Type AutoConverter(Type value) { return value; }
 
 	inline double AutoConverter(float value) { return 0.0; }
 
 	template <typename Type>
+	auto GetValue(lua_State* state, int index)
+	{
+		using RealType = decltype(AutoConverter(Type()));
+		return (RealType)TypeInfo<RealType>::GetValue(state, index);
+	}
+
+	template <typename Type>
 	inline void PushValue(lua_State* state, const Type& value)
 	{
-		using RealType = decltype(AutoConvert(value));
+		using RealType = decltype(AutoConverter(value));
 		TypeInfo<RealType>::PushValue(state, value);
 	}
 

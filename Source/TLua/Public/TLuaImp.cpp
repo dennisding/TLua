@@ -74,8 +74,7 @@ namespace TLua
 		UTF8CHAR* buff = (UTF8CHAR*)lua_tolstring(state, -1, &size);
 		FUTF8ToTCHAR converter(buff, size);
 		CppLog(4, converter.Get());
-		// pop the message
-		// lua_pop(state, 1);
+
 		return false;
 	}
 
@@ -101,7 +100,6 @@ namespace TLua
 
 		FUTF8ToTCHAR converter(buff, utf8_size);
 		size_t size = converter.Length() * sizeof(TCHAR);
-		//lua_pop(state, 1); // pop the buff
 		lua_pushlstring(state, (const char*)converter.Get(), size);
 		return 1;
 	}

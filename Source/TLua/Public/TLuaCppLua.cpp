@@ -1,10 +1,11 @@
-
 #include <map>
 #include <string>
 
 #include "TLua.h"
 #include "TLua.hpp"
 #include "TLuaCppLua.hpp"
+#include "TLuaTypes.hpp"
+#include "TLuaProperty.hpp"
 
 #include "CoreMinimal.h"
 #include "UObject/UObjectGlobals.h"
@@ -14,10 +15,12 @@ namespace TLua
 	struct AttributeInfo
 	{
 	public:
-		std::function<void(UObject*, double)> Setter;
-		std::function<double(UObject*)> Getter;
+		std::function<void(UObject*, lua_State*)> Setter;
+		std::function<void(UObject*, lua_State*)> Getter;
 	};
-	// 每个类只有一个vtable, 所以这里不考虑释放和内存泄漏问题
+
+	// because every class have only one vtable
+	// we don't consider the memory leak here.
 	class VTable
 	{
 	public:
@@ -34,7 +37,7 @@ namespace TLua
 			}
 
 			auto Finded = Attributes.Find(AttrName);
-			if (Finded) {
+			if (Finded) { // Error, you can only set the attribute once
 				EmptyAttribute(AttrName);
 				return;
 			}
@@ -61,48 +64,53 @@ namespace TLua
 			Call("_lua_update_vtable", Name, AttrName, 0);
 		}
 
+		template <typename Type>
+		void UpdateVTable(const FName& AttrName, Type* Property)
+		{
+			AttributeInfo* Attribute = GenAttributeInfo(Property);
+
+			Call("_lua_update_vtable", Name, AttrName, Attribute);
+		}
+
 		void UpdateProperty(const FName& AttrName, FProperty* Property)
 		{
-			//UE_LOG(Lua, Error, TEXT("set attr:%s"), *name);
-			//FFloatProperty* FloatProp = CastField<FFloatProperty>(property);
-			//void* ValuePtr = FloatProp->ContainerPtrToValuePtr<void>(self);
-			//FloatProp->SetFloatingPointPropertyValue(ValuePtr, (double)fv);
+			// 处理基本数值类型
+			if (auto* IntProperty = CastField<FIntProperty>(Property))
+			{
+				UpdateVTable(AttrName, IntProperty);
+			}
+			// 处理浮点数
+			else if (auto* FloatProperty = CastField<FFloatProperty>(Property))
+			{
+				UpdateVTable(AttrName, FloatProperty);
+			}
+			// 处理字符串
+			else if (auto* StrProperty = CastField<FStrProperty>(Property))
+			{
+				UpdateVTable(AttrName, StrProperty);
+			}
+			else {
+				UE_LOG(Lua, Error, TEXT("Unhandle Attribute:Name:%s"), *AttrName.ToString());
+			}
+		}
 
-			FFloatProperty* FloatProp = CastField<FFloatProperty>(Property);
-			
+		template <typename PropertyType>
+		AttributeInfo* GenAttributeInfo(PropertyType *Property)
+		{
 			AttributeInfo* Attribute = new AttributeInfo;
-			Attribute->Getter = [FloatProp](UObject* obj) -> float {
-				void* ValuePtr = FloatProp->ContainerPtrToValuePtr<void>(obj);
-				return FloatProp->GetFloatingPointPropertyValue(ValuePtr);
+
+			Attribute->Getter = [Property](UObject* Obj, lua_State* State) {
+				PushValue(State, PropertyInfo<PropertyType>::GetValue(Obj, Property));
 				};
 
-			Attribute->Setter = [FloatProp](UObject* obj, float value) {
-					void* ValuePtr = FloatProp->ContainerPtrToValuePtr<void>(obj);
-					FloatProp->SetFloatingPointPropertyValue(ValuePtr, value);
+			Attribute->Setter = [Property](UObject* Obj, lua_State* State) {
+				using InfoType = PropertyInfo<PropertyType>;
+				InfoType::SetValue(Obj, Property, 
+					GetValue<InfoType::ValueType>(State, -1));
 				};
 
 
-			Call("_lua_update_vtable", Name, AttrName, Attribute,
-				GetProcessor(GetValue), GetValue,
-				GetProcessor(SetValue), SetValue);
-
-			// Attributes[AttrName] = Attribute;
-			Attributes.Add(AttrName, Attribute);
-		}
-
-		static void SetValue(void *self, void *attr, double value)
-		{
-			UObject* Obj = (UObject*)self;
-			AttributeInfo* Info = (AttributeInfo*)attr;
-
-			Info->Setter(Obj, (float)value);
-		}
-
-		static double GetValue(void* self, void* attr)
-		{
-			UObject* Obj = (UObject*)self;
-			AttributeInfo* Info = (AttributeInfo*)attr;
-			return Info->Getter(Obj);
+			return Attribute;
 		}
 
 		void UpdateFunction(const FName& AttrName, UFunction* Function)
@@ -128,43 +136,15 @@ namespace TLua
 			}
 			// create new vtable
 			VTable* NewVTable = new VTable(TypeId);
-			// Mgr.VTables[TypeId] = NewVTable;
 			Mgr.VTables.Add(TypeId, NewVTable);
 			return NewVTable;
 		}
 
-//	private:
 		TMap<FString, VTable*> VTables;
 	};
 
-	// static void AttrSetter(void* self, const FString&name, const ValueGetter &getter)
-	static void AttrSetter(void* self, const FString& name, double fv)
-	{
-		if (self == nullptr) {
-			return;
-		}
-
-	/*	UObject* Obj = (UObject*)self;
-		VTable* Table = VTableMgr::GetVTable(Obj->GetName());
-
-		Table->AddProperty(name);*/
-		
-		FString ClassName(TEXT("/Script/CppLua.CppLuaCharacter"));
-		UClass* Class = LoadObject<UClass>(nullptr, *ClassName);
-		if (Class) {
-			FProperty* property = Class->FindPropertyByName(*name);
-			if (property) {
-				UE_LOG(Lua, Error, TEXT("set attr:%s"), *name);
-				FFloatProperty* FloatProp = CastField<FFloatProperty>(property);
-				void* ValuePtr = FloatProp->ContainerPtrToValuePtr<void>(self);
-				FloatProp->SetFloatingPointPropertyValue(ValuePtr, (double)fv);
-			}
-		}
-	}
-
 	static void UpdateVTable(const FString& TypeId, const FName& Name)
 	{
-		//		FString ClassName(TEXT("/Script/CppLua.CppLuaCharacter"));
 		UClass* Class = LoadObject<UClass>(nullptr, *TypeId, nullptr, LOAD_Quiet);
 		if (Class == nullptr) {
 			return;
@@ -172,32 +152,30 @@ namespace TLua
 
 		VTable* Table = VTableMgr::GetVTable(TypeId);
 		Table->AddAttribute(Name);
+	}
 
-		//FName AttrName(*Name);
-		//FProperty* Property = Class->FindPropertyByName(AttrName);
-		//if (Property) {
-		//	// update property vtable
-		//	// gp, getter, sp, setter
-		//	//Call("_cpp_vtable_add_attr", name_, attr_name,
-		//	//	GetProcessor(getter), getter,
-		//	//	GetProcessor(setter), setter);
-		//	Call("_lua_update_vtable", TypeId, Name,
-		//		GetProcessor(AttrSetter), AttrSetter,
-		//		GetProcessor(AttrSetter), AttrSetter);
-		//	return;
-		//}
+	static int GetAttribute(lua_State* State)
+	{
+		UObject* Object = GetValue<UObject*>(State, 1);
+		AttributeInfo* Attr = GetValue<AttributeInfo*>(State, 2);
 
-		//UFunction* Function = Class->FindFunctionByName(AttrName);
-		//if (Function) {
+		Attr->Getter(Object, State);
+		return 1;
+	}
 
-		//}
-		//else {
-		//	// no attribute
-		//}
+	static int SetAttribute(lua_State* State)
+	{
+		UObject* Object = GetValue<UObject*>(State, 1);
+		AttributeInfo* Attr = GetValue<AttributeInfo*>(State, 2);
+		Attr->Setter(Object, State);
+		return 0;
 	}
 
 	void RegisterCppLua()
 	{
+		lua_State* State = GetLuaState();
 		RegisterCallback("update_vtable", UpdateVTable);
+		lua_register(State, "_cpp_get_attr", GetAttribute);
+		lua_register(State, "_cpp_set_attr", SetAttribute);
 	}
 }
