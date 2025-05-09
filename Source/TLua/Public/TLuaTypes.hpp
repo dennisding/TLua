@@ -60,6 +60,21 @@ namespace TLua
 		}
 	};
 
+	template <size_t Size>
+	struct TypeInfo<const char[Size]>
+	{
+		inline static const char* GetValue(lua_State* state, int index)
+		{
+			return LuaGetString(state, index);
+		}
+
+		inline static void PushValue(lua_State* state, const char* value)
+		{
+			LuaPushString(state, value);
+		}
+	};
+
+
 	template <>
 	struct TypeInfo<std::string>
 	{
@@ -163,6 +178,9 @@ namespace TLua
 	template <typename Type>
 	inline Type AutoConverter(Type value) { return value; }
 
+	template <size_t Size>
+	inline char* AutoConverter(const char(&input)[Size]) { return input; }
+
 	inline double AutoConverter(float value) { return 0.0; }
 
 	template <typename Type>
@@ -176,6 +194,7 @@ namespace TLua
 	inline void PushValue(lua_State* state, const Type& value)
 	{
 		using RealType = decltype(AutoConverter(value));
+		// TypeInfo<RealType>::PushValue(state, value);
 		TypeInfo<RealType>::PushValue(state, value);
 	}
 
