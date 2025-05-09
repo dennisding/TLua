@@ -12,7 +12,6 @@
 
 namespace TLua
 {
-//	inline void PushValues(lua_State* state) {}
 	template <typename Type>
 	inline Type PopValue(lua_State* state);
 
@@ -94,6 +93,26 @@ namespace TLua
 		}
 	};
 
+	template <>
+	struct TypeInfo<FName>
+	{
+		inline static FName GetValue(lua_State* State, int Index)
+		{
+			size_t Size = 0;
+			const TCHAR* Buff = (const TCHAR*)LuaGetLString(State, Index, Size);
+			FName Name(Size/sizeof(TCHAR), Buff);
+
+			return Name;
+//			return FName(Buff, Size/sizeof(TCHAR));
+		}
+
+		inline static void PushValue(lua_State* State, const FName& Name)
+		{
+			FString NameString = Name.ToString();
+			TypeInfo<FString>::PushValue(State, NameString);
+		}
+	};
+
 	template <typename Type>
 	struct TypeInfo<Type*>
 	{
@@ -144,12 +163,14 @@ namespace TLua
 	};
 
 	template <typename Type>
-	auto _AutoConvert(const Type& value) { return value; }
+	inline auto AutoConvert(const Type& value) { return value; }
+
+	inline double AutoConverter(float value) { return 0.0; }
 
 	template <typename Type>
 	inline void PushValue(lua_State* state, const Type& value)
 	{
-		using RealType = decltype(_AutoConvert(value));
+		using RealType = decltype(AutoConvert(value));
 		TypeInfo<RealType>::PushValue(state, value);
 	}
 
@@ -162,9 +183,7 @@ namespace TLua
 	template <typename First, typename ...Last>
 	inline void PushValues(lua_State* state, const First& first, const Last& ...args)
 	{
-		// PushValue(state, std::forward(first));
 		PushValue(state, first);
-		// TypeInfo<First>::PushValue(state, first);
 		PushValues(state, args...);
 	}
 

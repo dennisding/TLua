@@ -11,7 +11,6 @@ namespace TLua
 	inline void Call(const char* name)
 	{
 		lua_State* state = GetLuaState();
-		//lua_checkstack(state, sizeof...(Types) + 2);
 
 		LuaGetGlobal(state, TLUA_TRACE_CALL_NAME);
 		LuaGetGlobal(state, name);
@@ -22,7 +21,6 @@ namespace TLua
 	inline void Call(const char* name, const Types&... args)
 	{
 		lua_State* state = GetLuaState();
-		//lua_checkstack(state, sizeof...(Types) + 2);
 
 		LuaGetGlobal(state, TLUA_TRACE_CALL_NAME);
 		LuaGetGlobal(state, name);
@@ -34,7 +32,6 @@ namespace TLua
 	inline R Call(const char* name, const Types&... args)
 	{
 		lua_State* state = GetLuaState();
-		// lua_checkstack(state, sizeof...(Types) + 2);
 
 		LuaGetGlobal(state, TLUA_TRACE_CALL_NAME);
 		LuaGetGlobal(state, name);
@@ -54,7 +51,6 @@ namespace TLua
 	{
 		static Type GetValue(lua_State* state)
 		{
-			// return TLua::GetValue<Type>(state, index);
 			return TypeInfo<Type>::GetValue(state, index);
 		}
 	};
@@ -107,12 +103,6 @@ namespace TLua
 	template <typename ...Types>
 	int Processor(lua_State* state)
 	{
-		//using FunType = void(*)(Types... args);
-		//FunType fun = GetValue<FunType>(state, 2);
-
-		//CallHelper<void, FunType, Types...>::Call(fun, state);
-
-		//return 0;
 		using FunType = void(*)(Types... args);
 		FunType fun = TypeInfo<FunType>::GetValue(state, 2);
 
@@ -124,11 +114,6 @@ namespace TLua
 	template <typename ReturnType, typename ...Types>
 	int ProcessorWithReturn(lua_State* state)
 	{
-		//using FunType = ReturnType(*)(Types... args);
-		//// FunType fun = (FunType)lua_touserdata(state, 2);
-		//FunType fun = GetValue<FunType>(state, 2);
-
-		//PushValue(state, CallHelper<ReturnType, FunType, Types...>::Call(fun, state));
 		using FunType = ReturnType(*)(Types... args);
 		FunType fun = TypeInfo<FunType>::GetValue(state, 2);
 

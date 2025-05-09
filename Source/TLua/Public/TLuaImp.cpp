@@ -51,12 +51,9 @@ namespace TLua
 
 	static int CppLog(lua_State* state)
 	{
-		//int level = GetValue<int>(state, 1);
-		//FString msg = GetValue<FString>(state, 2);
 		int level = TypeInfo<int>::GetValue(state, 1);
 		FString msg = TypeInfo<FString>::GetValue(state, 2);
 
-		// check the level definition in Libs/log.lua
 		CppLog(level, msg);
 
 		return 0;
@@ -78,7 +75,7 @@ namespace TLua
 		FUTF8ToTCHAR converter(buff, size);
 		CppLog(4, converter.Get());
 		// pop the message
-		lua_pop(state, 1);
+		// lua_pop(state, 1);
 		return false;
 	}
 
