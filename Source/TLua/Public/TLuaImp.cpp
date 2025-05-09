@@ -12,6 +12,7 @@
 
 #include "TLua.hpp"
 #include "TLuaCppLua.hpp"
+#include "TLuaTypes.hpp"
 
 static inline lua_State* NewLuaState()
 {
@@ -50,8 +51,10 @@ namespace TLua
 
 	static int CppLog(lua_State* state)
 	{
-		int level = GetValue<int>(state, 1);
-		FString msg = GetValue<FString>(state, 2);
+		//int level = GetValue<int>(state, 1);
+		//FString msg = GetValue<FString>(state, 2);
+		int level = TypeInfo<int>::GetValue(state, 1);
+		FString msg = TypeInfo<FString>::GetValue(state, 2);
 
 		// check the level definition in Libs/log.lua
 		CppLog(level, msg);
@@ -81,7 +84,7 @@ namespace TLua
 
 	static int CppReadFile(lua_State* state)
 	{
-		auto path = GetValue<FString>(state, 1);
+		auto path = TypeInfo<FString>::GetValue(state, 1);
 		TArray<uint8> content;
 
 		if (FFileHelper::LoadFileToArray(content, *path, FILEREAD_Silent)){
@@ -108,7 +111,7 @@ namespace TLua
 
 	static int CppUTF16_TO_UTF8(lua_State* state)
 	{
-		FString name = GetValue<FString>(state, 1);
+		FString name = TypeInfo<FString>::GetValue(state, 1);
 		FTCHARToUTF8 converter(name);
 		lua_pushlstring(state, (const char*)converter.Get(), converter.Length());
 		return 1;
@@ -234,9 +237,10 @@ namespace TLua
 		return lua_tonumber(state, index);
 	}
 
-	std::string LuaGetString(lua_State* state, int index)
+	const char* LuaGetString(lua_State* state, int index)
 	{
-		return std::string(lua_tostring(state, index));
+		return lua_tostring(state, index);
+		//return std::string(lua_tostring(state, index));
 	}
 
 	const char* LuaGetLString(lua_State* state, int index, size_t &size)

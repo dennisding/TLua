@@ -4,6 +4,7 @@
 #include "TLuaCppLua.hpp"
 
 #include "CoreMinimal.h"
+#include "UObject/UObjectGlobals.h"
 
 namespace TLua
 {
