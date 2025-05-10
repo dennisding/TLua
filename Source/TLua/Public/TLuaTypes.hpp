@@ -61,7 +61,7 @@ namespace TLua
 	};
 
 	template <size_t Size>
-	struct TypeInfo<const char[Size]>
+	struct TypeInfo<char[Size]>
 	{
 		inline static const char* GetValue(lua_State* state, int index)
 		{

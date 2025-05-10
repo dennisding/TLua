@@ -28,12 +28,12 @@ namespace TLua
 	struct PropertyInfo<FIntProperty>
 	{
 		using ValueType = int32;
-		static int32 GetValue(UObject* Obj, FIntProperty* Property)
+		static int32 GetValue(void* Obj, FIntProperty* Property)
 		{
 			return Property->GetPropertyValue_InContainer(Obj);
 		}
 
-		static void SetValue(UObject* Obj, FIntProperty* Property, int32 value)
+		static void SetValue(void* Obj, FIntProperty* Property, int32 value)
 		{
 			Property->SetValue_InContainer(Obj, value);
 		}

@@ -52,6 +52,7 @@ namespace TLua
 			if (Function) {
 				UE_LOG(Lua, Error, TEXT("update fun"));
 				UpdateFunction(AttrName, Function);
+//				UpdateVTable(AttrName, Function);
 				return;
 			}
 			EmptyAttribute(AttrName);
@@ -61,7 +62,7 @@ namespace TLua
 		void EmptyAttribute(const FName& AttrName)
 		{
 			Attributes.Add(AttrName, nullptr);
-			Call("_lua_update_vtable", Name, AttrName, 0);
+			Call("_lua_update_vtable_attr", Name, AttrName, 0);
 		}
 
 		template <typename Type>
@@ -69,7 +70,7 @@ namespace TLua
 		{
 			AttributeInfo* Attribute = GenAttributeInfo(Property);
 
-			Call("_lua_update_vtable", Name, AttrName, Attribute);
+			Call("_lua_update_vtable_attr", Name, AttrName, Attribute);
 		}
 
 		void UpdateProperty(const FName& AttrName, FProperty* Property)
@@ -113,9 +114,54 @@ namespace TLua
 			return Attribute;
 		}
 
+		AttributeInfo* GenAttributeInfo(UFunction* Function)
+		{
+			AttributeInfo* Info = new AttributeInfo;
+
+			Info->Getter = [Function](UObject* Obj, lua_State* State) {
+					uint8* Params = (uint8*)FMemory_Alloca(Function->ParmsSize);
+					FMemory::Memzero(Params, Function->ParmsSize);
+
+					for (TFieldIterator<FProperty> It(Function); It; ++It) {
+						FProperty* Property = *It;
+						// 处理基本数值类型
+						if (auto* IntProperty = CastField<FIntProperty>(Property))
+						{
+							auto Value = GetValue<int>(State, 3);
+							PropertyInfo<FIntProperty>::SetValue(Params, IntProperty, Value);
+						//	UpdateVTable(AttrName, IntProperty);
+						}
+					}
+
+					Obj->ProcessEvent(Function, Params);
+
+					// free the param ????
+				};
+
+			// Info->Setter = Info->Getter;
+
+			return Info;
+		}
+
+		void CallFunction()
+		{
+			
+		}
+
 		void UpdateFunction(const FName& AttrName, UFunction* Function)
 		{
+			AttributeInfo* Attribute = GenAttributeInfo(Function);
 
+			Call("_lua_update_vtable_fun", Name, AttrName, Attribute);
+			// UpdateVTable(AttrName, Function);
+			//uint8* Params = (uint8*)FMemory_Alloca(Function->ParmsSize);
+			//FMemory::Memzero(Params);
+
+			//for (TFieldIterator<FProperty> It(Function); It; ++It) {
+			//	FProperty* Property = *It;
+			//}
+
+			//Function->ProcessEvent(Function, Params);
 		}
 	private:
 		TMap<FName, AttributeInfo*> Attributes;
