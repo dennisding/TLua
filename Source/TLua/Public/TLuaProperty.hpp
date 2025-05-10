@@ -13,12 +13,12 @@ namespace TLua
 	struct PropertyInfo<FFloatProperty>
 	{
 		using ValueType = float;
-		static float GetValue(UObject* Obj, FFloatProperty* Property)
+		static float GetValue(void* Obj, FFloatProperty* Property)
 		{
 			return Property->GetPropertyValue_InContainer(Obj);
 		}
 
-		static void SetValue(UObject* Obj, FFloatProperty* Property, float Value)
+		static void SetValue(void* Obj, FFloatProperty* Property, float Value)
 		{
 			Property->SetValue_InContainer(Obj, Value);
 		}
@@ -43,12 +43,12 @@ namespace TLua
 	struct PropertyInfo<FStrProperty>
 	{
 		using ValueType = FString;
-		static FString& GetValue(UObject* Obj, FStrProperty* Property)
+		static FString& GetValue(void* Obj, FStrProperty* Property)
 		{
 			return *(Property->GetPropertyValuePtr_InContainer(Obj));
 		}
 
-		static void SetValue(UObject* Obj, FStrProperty* Property, const FString& Value)
+		static void SetValue(void* Obj, FStrProperty* Property, const FString& Value)
 		{
 			Property->SetValue_InContainer(Obj, Value);
 		}
@@ -71,4 +71,26 @@ namespace TLua
 		}
 
 	};
+
+	template <typename DispatcherType>
+	void DispatchProperty(FProperty* Property, DispatcherType &Dispatcher)
+	{
+		if (auto* IntProperty = CastField<FIntProperty>(Property))
+		{
+			Dispatcher.Visit(IntProperty);
+			// Info->Parameters.Add(new ParameterType<FIntProperty>(IntProperty, ParamIndex));
+		}
+		else if (auto* FloatProperty = CastField<FFloatProperty>(Property))
+		{
+			Dispatcher.Visit(FloatProperty);
+		}
+		else if (auto* StrProperty = CastField<FStrProperty>(Property)) 
+		{
+			Dispatcher.Visit(StrProperty);
+			// Info->Parameters.Add(new ParameterType<FStrProperty>(StrProperty, ParamIndex));
+		}
+		else {
+			UE_LOG(Lua, Warning, TEXT("unhandled attribute:%s"), *Property->GetName());
+		}
+	}
 }

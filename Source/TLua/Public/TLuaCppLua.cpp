@@ -12,11 +12,79 @@
 
 namespace TLua
 {
+	class ParameterBase
+	{
+	public:
+		virtual void SetParameter(uint8* Params, lua_State* State) = 0;
+	};
+
 	struct AttributeInfo
 	{
 	public:
 		std::function<void(UObject*, lua_State*)> Setter;
 		std::function<void(UObject*, lua_State*)> Getter;
+		TArray<ParameterBase*> Parameters;
+	};
+
+	template <typename PropertyType>
+	class ParameterType : public ParameterBase
+	{
+	public:
+		ParameterType(PropertyType* InProperty, int InLuaIndex)
+			: Property(InProperty), LuaIndex(InLuaIndex)
+		{
+		}
+
+		virtual void SetParameter(uint8* Params, lua_State* State) override
+		{
+			using PropertyInfoType = PropertyInfo<PropertyType>;
+			PropertyInfoType::SetValue(Params, Property,
+				GetValue<typename PropertyInfoType::ValueType>(State, LuaIndex));
+		}
+
+	private:
+		PropertyType* Property;
+		int LuaIndex;
+	};
+
+	class ParameterVisitor
+	{
+	public:
+		ParameterVisitor(int InIndex, AttributeInfo* InInfo)
+			: Index(InIndex), Info(InInfo)
+		{
+
+		}
+		
+		template <typename PropertyType> 
+		inline void Visit(PropertyType* Property)
+		{
+			Info->Parameters.Add(new ParameterType<PropertyType>(Property, Index));
+		}
+
+	private:
+		int Index;
+		AttributeInfo* Info;
+	};
+
+	class VTable;
+
+	class AttributeVisitor
+	{
+	public:
+		AttributeVisitor(VTable* InTable, const FString& InTypeName, const FName& InAttrName)
+			: Table(InTable), TypeName(InTypeName), AttrName(InAttrName)
+		{
+		
+		}
+
+		template <typename PropertyType>
+		void Visit(PropertyType* Property);
+
+	private:
+		VTable* Table;
+		FString TypeName;
+		FName AttrName;
 	};
 
 	// because every class have only one vtable
@@ -27,6 +95,13 @@ namespace TLua
 		explicit VTable(const FString& TypeId) : Class(nullptr), Name(TypeId)
 		{
 			Class = LoadObject<UClass>(nullptr, *TypeId);
+		}
+
+		template <typename Type>
+		void UpdateVTable(const FName& AttrName, Type* Property)
+		{
+			AttributeInfo* Attribute = GenAttributeInfo(Property);
+			Call("_lua_update_vtable_attr", Name, AttrName, Attribute);
 		}
 
 		void AddAttribute(const FName& AttrName)
@@ -42,7 +117,7 @@ namespace TLua
 				return;
 			}
 
-			FProperty *Property = Class->FindPropertyByName(AttrName);
+			FProperty* Property = Class->FindPropertyByName(AttrName);
 			if (Property) {
 				UpdateProperty(AttrName, Property);
 				return;
@@ -52,7 +127,6 @@ namespace TLua
 			if (Function) {
 				UE_LOG(Lua, Error, TEXT("update fun"));
 				UpdateFunction(AttrName, Function);
-//				UpdateVTable(AttrName, Function);
 				return;
 			}
 			EmptyAttribute(AttrName);
@@ -65,34 +139,10 @@ namespace TLua
 			Call("_lua_update_vtable_attr", Name, AttrName, 0);
 		}
 
-		template <typename Type>
-		void UpdateVTable(const FName& AttrName, Type* Property)
-		{
-			AttributeInfo* Attribute = GenAttributeInfo(Property);
-
-			Call("_lua_update_vtable_attr", Name, AttrName, Attribute);
-		}
-
 		void UpdateProperty(const FName& AttrName, FProperty* Property)
 		{
-			// 处理基本数值类型
-			if (auto* IntProperty = CastField<FIntProperty>(Property))
-			{
-				UpdateVTable(AttrName, IntProperty);
-			}
-			// 处理浮点数
-			else if (auto* FloatProperty = CastField<FFloatProperty>(Property))
-			{
-				UpdateVTable(AttrName, FloatProperty);
-			}
-			// 处理字符串
-			else if (auto* StrProperty = CastField<FStrProperty>(Property))
-			{
-				UpdateVTable(AttrName, StrProperty);
-			}
-			else {
-				UE_LOG(Lua, Error, TEXT("Unhandle Attribute:Name:%s"), *AttrName.ToString());
-			}
+			AttributeVisitor Visitor(this, Name, AttrName);
+			DispatchProperty(Property, Visitor);
 		}
 
 		template <typename PropertyType>
@@ -110,7 +160,6 @@ namespace TLua
 					GetValue<InfoType::ValueType>(State, -1));
 				};
 
-
 			return Attribute;
 		}
 
@@ -118,34 +167,29 @@ namespace TLua
 		{
 			AttributeInfo* Info = new AttributeInfo;
 
-			Info->Getter = [Function](UObject* Obj, lua_State* State) {
+			// dispatch the property
+			int ParamIndex = 2;				// getter(UObject*, AttributeInfo*,Args...)
+			for (TFieldIterator<FProperty> It(Function); It; ++It) {
+				FProperty* Property = *It;
+				ParamIndex += 1;
+
+				ParameterVisitor Visitor(ParamIndex, Info);
+				DispatchProperty(Property, Visitor);
+			}
+
+			Info->Getter = [Function, Info](UObject* Obj, lua_State* State) {
 					uint8* Params = (uint8*)FMemory_Alloca(Function->ParmsSize);
 					FMemory::Memzero(Params, Function->ParmsSize);
 
-					for (TFieldIterator<FProperty> It(Function); It; ++It) {
-						FProperty* Property = *It;
-						// 处理基本数值类型
-						if (auto* IntProperty = CastField<FIntProperty>(Property))
-						{
-							auto Value = GetValue<int>(State, 3);
-							PropertyInfo<FIntProperty>::SetValue(Params, IntProperty, Value);
-						//	UpdateVTable(AttrName, IntProperty);
-						}
+					for (ParameterBase* Parameter : Info->Parameters) {
+						Parameter->SetParameter(Params, State);
 					}
-
+					
 					Obj->ProcessEvent(Function, Params);
-
 					// free the param ????
 				};
-
 			// Info->Setter = Info->Getter;
-
 			return Info;
-		}
-
-		void CallFunction()
-		{
-			
 		}
 
 		void UpdateFunction(const FName& AttrName, UFunction* Function)
@@ -153,15 +197,6 @@ namespace TLua
 			AttributeInfo* Attribute = GenAttributeInfo(Function);
 
 			Call("_lua_update_vtable_fun", Name, AttrName, Attribute);
-			// UpdateVTable(AttrName, Function);
-			//uint8* Params = (uint8*)FMemory_Alloca(Function->ParmsSize);
-			//FMemory::Memzero(Params);
-
-			//for (TFieldIterator<FProperty> It(Function); It; ++It) {
-			//	FProperty* Property = *It;
-			//}
-
-			//Function->ProcessEvent(Function, Params);
 		}
 	private:
 		TMap<FName, AttributeInfo*> Attributes;
@@ -188,6 +223,12 @@ namespace TLua
 
 		TMap<FString, VTable*> VTables;
 	};
+
+	template <typename PropertyType>
+	void AttributeVisitor::Visit(PropertyType* Property)
+	{
+		Table->UpdateVTable(AttrName, Property);
+	}
 
 	static void UpdateVTable(const FString& TypeId, const FName& Name)
 	{
