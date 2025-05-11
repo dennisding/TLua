@@ -49,7 +49,7 @@ namespace TLua
 		}
 	}
 
-	static int CppLog(lua_State* state)
+	static int LuaCppLog(lua_State* state)
 	{
 		int level = TypeInfo<int>::GetValue(state, 1);
 		FString msg = TypeInfo<FString>::GetValue(state, 2);
@@ -73,7 +73,8 @@ namespace TLua
 		size_t size = 0;
 		UTF8CHAR* buff = (UTF8CHAR*)lua_tolstring(state, -1, &size);
 		FUTF8ToTCHAR converter(buff, size);
-		CppLog(4, converter.Get());
+		FString msg(converter.Length(), converter.Get());
+		CppLog(4, msg);
 
 		return false;
 	}
@@ -84,7 +85,8 @@ namespace TLua
 		TArray<uint8> content;
 
 		if (FFileHelper::LoadFileToArray(content, *path, FILEREAD_Silent)){
-			lua_pushlstring(state, (const char *)content.GetData(), content.NumBytes());
+			content.Add(0);
+			lua_pushlstring(state, (const char *)content.GetData(), content.NumBytes() - 1);
 		}
 		else {
 			lua_pushnil(state);
@@ -121,14 +123,21 @@ namespace TLua
 			return;
 		}
 
-		// do the primary string
-		lua_getglobal(state, "load"); // load
-		lua_pushlstring(state, (const char*)content.GetData(), content.NumBytes()); // load chunk
-		lua_pushstring(state, displayName.c_str());
-		lua_pushstring(state, "bt");
-		
-		CheckState(lua_pcall(state, 3, 1, 0), state);
-		CheckState(lua_pcall(state, 0, 0, 0), state);
+		content.Add(0); // add the null byte 
+		int result = luaL_loadstring(state, (const char*)content.GetData());
+		if (result == LUA_OK) {
+			result = lua_pcall(state, 0, LUA_MULTRET, 0);
+			if (result != LUA_OK) {
+				UE_LOG(Lua, Error, TEXT("CallError"));
+			}
+		}
+		else {
+			const char* msg = lua_tostring(state, -1);
+			FString ErrorMsg(msg);
+			UE_LOG(Lua, Error, TEXT("SyntaxError:File %s:%s"), *basicFileName, *ErrorMsg);
+		}
+		// CheckState(lua_pcall(state, 3, 1, 0), state)
+		// CheckState(lua_pcall(state, 0, 0, 0), state);
 	}
 
 	void Init()
@@ -140,17 +149,16 @@ namespace TLua
 		lua_register(state, "_lua_set_cpp_attr", LuaSetCppAttr); // internal use, don't re register this
 		lua_register(state, "_cpp_utf8_to_utf16", CppUTF8_TO_UTF16);
 		lua_register(state, "_cpp_utf16_to_utf8", CppUTF16_TO_UTF8);
+		RegisterCppLua();
 
 		// lib hook, re register this functions when needed
 		lua_register(state, "_cpp_read_file", CppReadFile); // re register this after init when needed
-		lua_register(state, "_cpp_log", CppLog); // re register this after init when needed
+		lua_register(state, "_cpp_log", LuaCppLog); // re register this after init when needed
 
 		FString basicFileName = FPaths::ProjectContentDir() / TEXT("Script/Lua/Libs/basic.lua");
 		FString sysFileName = FPaths::ProjectContentDir() / TEXT("Script/Lua/Libs/sys.lua");
 		LoadPrimaryLuaFile(state, basicFileName, "basic.lua");
 		LoadPrimaryLuaFile(state, sysFileName, "sys.lua");
-
-		RegisterCppLua();
 	}
 
 	inline lua_State* GetLuaState()
@@ -165,12 +173,13 @@ namespace TLua
 
 		FTCHARToUTF8 converter(FPaths::GetCleanFilename(name));
 		// call the dofile in lua
-		lua_getglobal(state, "trace_call");
-		lua_getglobal(state, "_lua_dofile");
-		PushValue(state, name);
+		lua_getglobal(state, "trace_call");			// trace_call
+		lua_getglobal(state, "_lua_dofile");		// trace_call, _lua_dofile
+		PushValue(state, name);						// trace_call, _lua_dofile, name
 		lua_pushlstring(state, converter.Get(), converter.Length());
 
-		CheckState(lua_pcall(state, 3, 0, 0), state);
+		lua_call(state, 3, 0);
+		//CheckState(lua_pcall(state, 3, 0, 0), state);
 	}
 
 	void DoString(const char* buffer, const char* name)
@@ -201,9 +210,9 @@ namespace TLua
 		lua_getglobal(state, name);
 	}
 
-	void LuaCall(lua_State* state, int arg_num, int return_num)
+	void LuaCall(lua_State* State, int ArgNum, int ReturnNum)
 	{
-		CheckState(lua_pcall(state, arg_num, return_num, 0), state);
+		lua_call(State, ArgNum, ReturnNum);
 	}
 
 	int LuaGetTop(lua_State* state)
@@ -215,6 +224,11 @@ namespace TLua
 	{
 		lua_pushstring(state, msg);
 		lua_error(state);
+	}
+
+	void LuaCheckStack(lua_State* State, int Num)
+	{
+		lua_checkstack(State, Num);
 	}
 
 	void* LuaGetUserData(lua_State* state, int index)
@@ -306,6 +320,17 @@ namespace TLua
 	void LuaPushNil(lua_State* state)
 	{
 		lua_pushnil(state);
+	}
+
+	void LuaPushCppType(lua_State* State, int Type)
+	{
+		lua_pushinteger(State, Type);
+		lua_gettable(State, LUA_REGISTRYINDEX);
+	}
+
+	void LuaSetMetatable(lua_State* State, int Index)
+	{
+		lua_setmetatable(State, Index);
 	}
 }
 

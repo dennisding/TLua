@@ -16,6 +16,7 @@ namespace TLua
 	{
 	public:
 		virtual void SetParameter(uint8* Params, lua_State* State) = 0;
+		virtual void DestroyValue_InContainer(void *Container) = 0;
 	};
 
 	struct AttributeInfo
@@ -40,6 +41,11 @@ namespace TLua
 			using PropertyInfoType = PropertyInfo<PropertyType>;
 			PropertyInfoType::SetValue(Params, Property,
 				GetValue<typename PropertyInfoType::ValueType>(State, LuaIndex));
+		}
+
+		virtual void DestroyValue_InContainer(void* Container)
+		{
+			Property->DestroyValue_InContainer(Container);
 		}
 
 	private:
@@ -125,7 +131,6 @@ namespace TLua
 
 			UFunction* Function = Class->FindFunctionByName(AttrName);
 			if (Function) {
-				UE_LOG(Lua, Error, TEXT("update fun"));
 				UpdateFunction(AttrName, Function);
 				return;
 			}
@@ -181,12 +186,17 @@ namespace TLua
 					uint8* Params = (uint8*)FMemory_Alloca(Function->ParmsSize);
 					FMemory::Memzero(Params, Function->ParmsSize);
 
+					// set the parameter
 					for (ParameterBase* Parameter : Info->Parameters) {
 						Parameter->SetParameter(Params, State);
 					}
 					
 					Obj->ProcessEvent(Function, Params);
-					// free the param ????
+
+					// free the parameter
+					for (ParameterBase* Parameter : Info->Parameters) {
+						Parameter->DestroyValue_InContainer(Params);
+					}
 				};
 			// Info->Setter = Info->Getter;
 			return Info;
@@ -230,15 +240,20 @@ namespace TLua
 		Table->UpdateVTable(AttrName, Property);
 	}
 
-	static void UpdateVTable(const FString& TypeId, const FName& Name)
+	static int UpdateVTable(lua_State* State)
 	{
+		FString TypeId = GetValue<FString>(State, -2);
+		FName Name = GetValue<FName>(State, -1);
+
 		UClass* Class = LoadObject<UClass>(nullptr, *TypeId, nullptr, LOAD_Quiet);
 		if (Class == nullptr) {
-			return;
+			return 0;
 		}
 
 		VTable* Table = VTableMgr::GetVTable(TypeId);
 		Table->AddAttribute(Name);
+
+		return 0;
 	}
 
 	static int GetAttribute(lua_State* State)
@@ -261,7 +276,7 @@ namespace TLua
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
-		RegisterCallback("update_vtable", UpdateVTable);
+		lua_register(State, "_cpp_update_vtable", UpdateVTable);
 		lua_register(State, "_cpp_get_attr", GetAttribute);
 		lua_register(State, "_cpp_set_attr", SetAttribute);
 	}

@@ -8,6 +8,7 @@
 
 #include "TLua.hpp"
 #include "TLuaImp.hpp"
+#include "TLuaCppLua.hpp"
 #include "Lua/lua.hpp"
 
 namespace TLua
@@ -18,6 +19,70 @@ namespace TLua
 	template <typename Type>
 	struct TypeInfo {};
 
+	// auto convert
+	template <typename Type>
+	inline Type AutoConverter(Type value) { return value; }
+
+	template <size_t Size>
+	inline char* AutoConverter(const char(&input)[Size]) { return input; }
+
+	inline double AutoConverter(float value) { return 0.0; }
+
+	template <typename Type>
+	auto GetValue(lua_State* state, int index)
+	{
+		using RealType = decltype(AutoConverter(Type()));
+		return (RealType)TypeInfo<RealType>::GetValue(state, index);
+	}
+
+	template <typename Type>
+	inline void PushValue(lua_State* state, const Type& value)
+	{
+		using RealType = decltype(AutoConverter(value));
+		// TypeInfo<RealType>::PushValue(state, value);
+		TypeInfo<RealType>::PushValue(state, value);
+	}
+
+	template <typename Type>
+	inline void SetTableByName(lua_State* State, int Index, const char* Name, const Type& Value)
+	{
+		int AbsIndex = LuaAbsIndex(State, Index);
+		LuaPushString(State, Name); // name
+		PushValue(State, Value);	// name, value
+		LuaSetTable(State, AbsIndex);
+	}
+
+	template <typename Type>
+	inline Type GetTableByName(lua_State* State, int Index, const char* Name)
+	{
+		int AbsIndex = LuaAbsIndex(State, Index);
+		LuaPushString(State, Name);
+		LuaGetTable(State, AbsIndex);
+		return PopValue<Type>(State);
+	}
+
+	template <typename Type>
+	inline void PushValues(lua_State* state, const Type& arg)
+	{
+		PushValue(state, arg);
+	}
+
+	template <typename First, typename ...Last>
+	inline void PushValues(lua_State* state, const First& first, const Last& ...args)
+	{
+		PushValue(state, first);
+		PushValues(state, args...);
+	}
+
+	template <typename Type>
+	inline Type PopValue(lua_State* state)
+	{
+		Type result = TypeInfo<Type>::GetValue(state, -1);
+		LuaPop(state, 1);
+		return result;
+	}
+
+	// special type template
 	template <>
 	struct TypeInfo<int>
 	{
@@ -109,6 +174,44 @@ namespace TLua
 	};
 
 	template <>
+	struct TypeInfo<CppLuaType>
+	{
+		inline static void PushValue(lua_State* State, const CppLuaType& Value)
+		{
+			LuaPushInteger(State, Value);
+			LuaGetTable(State, -1);
+		}
+	};
+
+	template <>
+	struct TypeInfo<FVector3d>
+	{
+		using Vector = FVector3d;
+		inline static Vector GetValue(lua_State* State, int Index)
+		{
+			Vector Result;
+			Result.X = GetTableByName<double>(State, -1, "x");
+			Result.Y = GetTableByName<double>(State, -1, "y");
+			Result.Z = GetTableByName<double>(State, -1, "z");
+
+			return Result;
+		}
+
+		inline static void PushValue(lua_State* State, const Vector& Value)
+		{
+			LuaNewTable(State);
+			SetTableByName(State, -1, "x", Value.X);
+			SetTableByName(State, -1, "y", Value.Y);
+			SetTableByName(State, -1, "z", Value.Z);
+			SetTableByName(State, -1, "_ctype", "FVector");
+
+			// set the metatable
+			LuaGetGlobal(State, "_ctype");
+			LuaSetMetatable(State, -2);
+		}
+	};
+
+	template <>
 	struct TypeInfo<FName>
 	{
 		inline static FName GetValue(lua_State* State, int Index)
@@ -174,48 +277,4 @@ namespace TLua
 			}
 		}
 	};
-
-	template <typename Type>
-	inline Type AutoConverter(Type value) { return value; }
-
-	template <size_t Size>
-	inline char* AutoConverter(const char(&input)[Size]) { return input; }
-
-	inline double AutoConverter(float value) { return 0.0; }
-
-	template <typename Type>
-	auto GetValue(lua_State* state, int index)
-	{
-		using RealType = decltype(AutoConverter(Type()));
-		return (RealType)TypeInfo<RealType>::GetValue(state, index);
-	}
-
-	template <typename Type>
-	inline void PushValue(lua_State* state, const Type& value)
-	{
-		using RealType = decltype(AutoConverter(value));
-		// TypeInfo<RealType>::PushValue(state, value);
-		TypeInfo<RealType>::PushValue(state, value);
-	}
-
-	template <typename Type>
-	inline void PushValues(lua_State* state, const Type& arg)
-	{
-		PushValue(state, arg);
-	}
-
-	template <typename First, typename ...Last>
-	inline void PushValues(lua_State* state, const First& first, const Last& ...args)
-	{
-		PushValue(state, first);
-		PushValues(state, args...);
-	}
-
-	template <typename Type>
-	inline Type PopValue(lua_State* state)
-	{
-		Type result = TypeInfo<Type>::GetValue(state, -1);
-		LuaPop(state, 1);
-		return result;
-	}
 }

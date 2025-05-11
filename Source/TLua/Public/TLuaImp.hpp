@@ -12,6 +12,8 @@ namespace TLua
 	TLua_API void LuaCall(lua_State* state, int arg_num, int return_num = 0);
 	TLua_API int LuaGetTop(lua_State* state);
 	TLua_API void LuaError(lua_State* state, const char* msg);
+	TLua_API void LuaCheckStack(lua_State* State, int Num);
+	TLua_API void LuaSetMetatable(lua_State* State, int Index);
 
 	TLua_API void* LuaGetUserData(lua_State* state, int index);
 	TLua_API int LuaGetInteger(lua_State* state, int index);
@@ -35,4 +37,6 @@ namespace TLua
 
 	TLua_API void LuaPop(lua_State* state, int num);
 	TLua_API int LuaAbsIndex(lua_State* state, int index);
+
+	TLua_API void LuaPushCppType(lua_State* State, int CppType);
 }
