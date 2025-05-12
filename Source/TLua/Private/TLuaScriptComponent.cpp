@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "TLua.hpp"
-
 #include "TLuaScriptComponent.h"
+
+#include "TLua.hpp"
 
 // Sets default values for this component's properties
 UTLuaScriptComponent::UTLuaScriptComponent()

@@ -7,5 +7,5 @@
 #include "Lua/lua.hpp"
 #include "TLuaImp.hpp"
 #include "TLuaCall.hpp"
+#include "TLuaProperty.hpp"
 #include "TLuaTypes.hpp"
-

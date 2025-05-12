@@ -4,6 +4,8 @@
 #include "CoreMinimal.h"
 #include "UObject/UObjectGlobals.h"
 
+#include "TLua.h"
+
 namespace TLua
 {
 	template <typename Property>
@@ -13,7 +15,7 @@ namespace TLua
 	struct PropertyInfo<FFloatProperty>
 	{
 		using ValueType = float;
-		static float GetValue(void* Obj, FFloatProperty* Property)
+		static float GetValue(const void* Obj, FFloatProperty* Property)
 		{
 			return Property->GetPropertyValue_InContainer(Obj);
 		}
@@ -25,10 +27,25 @@ namespace TLua
 	};
 
 	template <>
+	struct PropertyInfo<FDoubleProperty>
+	{
+		using ValueType = double;
+		static ValueType GetValue(const void* Obj, FDoubleProperty* Property)
+		{
+			return Property->GetPropertyValue_InContainer(Obj);
+		}
+
+		static void SetValue(void* Obj, FDoubleProperty* Property, ValueType Value)
+		{
+			Property->SetValue_InContainer(Obj, Value);
+		}
+	};
+
+	template <>
 	struct PropertyInfo<FIntProperty>
 	{
 		using ValueType = int32;
-		static int32 GetValue(void* Obj, FIntProperty* Property)
+		static int32 GetValue(const void* Obj, FIntProperty* Property)
 		{
 			return Property->GetPropertyValue_InContainer(Obj);
 		}
@@ -43,7 +60,7 @@ namespace TLua
 	struct PropertyInfo<FStrProperty>
 	{
 		using ValueType = FString;
-		static FString& GetValue(void* Obj, FStrProperty* Property)
+		static const FString& GetValue(const void* Obj, FStrProperty* Property)
 		{
 			return *(Property->GetPropertyValuePtr_InContainer(Obj));
 		}
@@ -54,23 +71,22 @@ namespace TLua
 		}
 	};
 
-	template <>
-	struct PropertyInfo<FObjectProperty>
-	{
-		using ValueType = TObjectPtr<UObject>;
-		static ValueType GetValue(UObject* Obj, FObjectProperty* Property)
-		{
-			ValueType Value;
-			Property->GetValue_InContainer(Obj, &Value);
-			return Value;
-		}
+	//template <>
+	//struct PropertyInfo<FObjectProperty>
+	//{
+	//	using ValueType = TObjectPtr<UObject>;
+	//	static ValueType GetValue(const UObject* Obj, FObjectProperty* Property)
+	//	{
+	//		ValueType Value;
+	//		Property->GetValue_InContainer(Obj, &Value);
+	//		return Value;
+	//	}
 
-		static void SetValue(UObject* Obj, FObjectProperty* Property, const ValueType& Value)
-		{
-			Property->SetValue_InContainer(Obj, Value);
-		}
-
-	};
+	//	static void SetValue(UObject* Obj, FObjectProperty* Property, const ValueType& Value)
+	//	{
+	//		Property->SetValue_InContainer(Obj, Value);
+	//	}
+	//};
 
 	template <typename DispatcherType>
 	void DispatchProperty(FProperty* Property, DispatcherType &Dispatcher)

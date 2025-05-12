@@ -273,11 +273,46 @@ namespace TLua
 		return 0;
 	}
 
+	static int CppStructGetName(lua_State* State)
+	{
+		UStruct* Struct = GetValue<UStruct*>(State, 1);
+
+		FString Name = Struct->GetName();
+		FTCHARToUTF8 Convert(Name);
+		lua_pushlstring(State, (const char*)Convert.Get(), Convert.Length());
+
+		return 1;
+	}
+
+	//static int CppStructGetAttr(lua_State* State)
+	//{
+	//	UStruct* Struct = GetValue<UStruct*>(State, 1);
+	//	const char* LuaName = lua_tostring(State, 2);
+	//	FName Name(LuaName);
+
+	//	FProperty* Property = Struct->FindPropertyByName(Name);
+	//	if (Property) {
+	//		// update property
+	//		return 1;
+	//	}
+
+	//	UFunction* Function = Struct->FindFunction(Name);
+	//	if (Function) {
+	//		// update function
+	//		return 1;
+	//	}
+
+	//	return 0;
+	//}
+
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
 		lua_register(State, "_cpp_update_vtable", UpdateVTable);
 		lua_register(State, "_cpp_get_attr", GetAttribute);
 		lua_register(State, "_cpp_set_attr", SetAttribute);
+
+		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
+//		lua_register(State, "_cpp_struct_get_attr", CppStructGetAttr);
 	}
 }

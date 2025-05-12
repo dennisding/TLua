@@ -9,6 +9,7 @@
 #include "TLua.hpp"
 #include "TLuaImp.hpp"
 #include "TLuaCppLua.hpp"
+#include "TLuaProperty.hpp"
 #include "Lua/lua.hpp"
 
 namespace TLua
@@ -16,7 +17,7 @@ namespace TLua
 	template <typename Type>
 	inline Type PopValue(lua_State* state);
 
-	template <typename Type>
+	template <typename Type, typename = void>
 	struct TypeInfo {};
 
 	// auto convert
@@ -111,6 +112,7 @@ namespace TLua
 		}
 	};
 
+
 	template <>
 	struct TypeInfo<char*>
 	{
@@ -173,43 +175,43 @@ namespace TLua
 		}
 	};
 
-	template <>
-	struct TypeInfo<CppLuaType>
-	{
-		inline static void PushValue(lua_State* State, const CppLuaType& Value)
-		{
-			LuaPushInteger(State, Value);
-			LuaGetTable(State, -1);
-		}
-	};
+	//template <>
+	//struct TypeInfo<CppLuaType>
+	//{
+	//	inline static void PushValue(lua_State* State, const CppLuaType& Value)
+	//	{
+	//		LuaPushInteger(State, Value);
+	//		LuaGetTable(State, -1);
+	//	}
+	//};
 
-	template <>
-	struct TypeInfo<FVector3d>
-	{
-		using Vector = FVector3d;
-		inline static Vector GetValue(lua_State* State, int Index)
-		{
-			Vector Result;
-			Result.X = GetTableByName<double>(State, -1, "x");
-			Result.Y = GetTableByName<double>(State, -1, "y");
-			Result.Z = GetTableByName<double>(State, -1, "z");
+	//template <typename Type>
+	//struct TypeInfo<UE::Math::TVector<Type>>
+	//{
+	//	using Vector = FVector3d;
+	//	inline static Vector GetValue(lua_State* State, int Index)
+	//	{
+	//		Vector Result;
+	//		Result.X = GetTableByName<double>(State, -1, "x");
+	//		Result.Y = GetTableByName<double>(State, -1, "y");
+	//		Result.Z = GetTableByName<double>(State, -1, "z");
 
-			return Result;
-		}
+	//		return Result;
+	//	}
 
-		inline static void PushValue(lua_State* State, const Vector& Value)
-		{
-			LuaNewTable(State);
-			SetTableByName(State, -1, "x", Value.X);
-			SetTableByName(State, -1, "y", Value.Y);
-			SetTableByName(State, -1, "z", Value.Z);
-			SetTableByName(State, -1, "_ctype", "FVector");
+	//	inline static void PushValue(lua_State* State, const Vector& Value)
+	//	{
+	//		LuaNewTable(State);
+	//		SetTableByName(State, -1, "x", Value.X);
+	//		SetTableByName(State, -1, "y", Value.Y);
+	//		SetTableByName(State, -1, "z", Value.Z);
+	//		SetTableByName(State, -1, "_ct", "FVector");
 
-			// set the metatable
-			LuaGetGlobal(State, "_ctype");
-			LuaSetMetatable(State, -2);
-		}
-	};
+	//		// set the metatable
+	//		LuaGetGlobal(State, "_ctype");
+	//		LuaSetMetatable(State, -2);
+	//	}
+	//};
 
 	template <>
 	struct TypeInfo<FName>
@@ -275,6 +277,90 @@ namespace TLua
 				TypeInfo<ValueType>::PushValue(state, values[i]);
 				LuaSetTable(state, -3);
 			}
+		}
+	};
+
+	//template <typename Type>
+	//struct TypeInfo<Type, std::void_t<decltype(TBaseStructure<Type>::Get())>>
+	//{
+	//	inline static Type GetValue(lua_State* State, int index)
+	//	{
+
+	//	}
+
+	//	inline static void PushValue(lua_State* State, const Type& Value)
+	//	{
+	//		LuaPushNil(State);
+	//	}
+	//};
+
+	// match the struct type
+	// only Struct type have the method StaticStruct
+	template <typename Type>
+	struct TypeInfo<Type, std::void_t<decltype(TBaseStructure<Type>::Get())>>
+	{
+		UStruct* GetStaticStruct()
+		{
+			return Type::StaticStrut();
+		}
+	public:
+		inline static Type GetValue(lua_State* State, int index)
+		{
+		}
+
+		inline static void PushValue(lua_State* State, const Type& Value)
+		{
+//			LuaPushNumber(State, 1314);
+			LuaNewTable(State);
+			SetTableByName(State, -1, "_ct", TBaseStructure<Type>::Get());
+			// iter the values
+
+			UStruct* StructInfo = TBaseStructure<Type>::Get();
+			for (TFieldIterator<FProperty> It(StructInfo); It; ++It) {
+				FProperty* Property = *It;
+
+				FString NameString = Property->GetName();
+				FTCHARToUTF8 Convert(NameString);
+				const char* Name = (const char*)Convert.Get();
+
+				std::string TmpName(Convert.Get(), Convert.Length());
+
+				if (auto* IntProperty = CastField<FIntProperty>(Property))
+				{
+					SetTableByName(State, -1, TmpName.c_str(),
+						PropertyInfo<FIntProperty>::GetValue(&Value, IntProperty));
+				}
+				else if (auto* FloatProperty = CastField<FFloatProperty>(Property))
+				{
+					SetTableByName(State, -1, TmpName.c_str(),
+						PropertyInfo<FFloatProperty>::GetValue(&Value, FloatProperty));
+				}
+				else if (auto* DoubleProperty = CastField<FDoubleProperty>(Property)) 
+				{
+					SetTableByName(State, -1, TmpName.c_str(),
+						PropertyInfo<FDoubleProperty>::GetValue(&Value, DoubleProperty));
+				}
+				else if (auto* StrProperty = CastField<FStrProperty>(Property))
+				{
+					FString OutValue;
+					StrProperty->GetValue_InContainer(&Value, &OutValue);
+					SetTableByName(State, -1, TmpName.c_str(), OutValue);
+				}
+				else {
+					SetTableByName(State, -1, TmpName.c_str(), 3344);
+					// TLua::PushValue(State, 12345);
+					//TLua::LuaPushNil(State);
+				}
+			}
+
+			// set the metatable
+			LuaGetGlobal(State, "_ls");
+			LuaSetMetatable(State, -2);
+		}
+
+		inline static void PushValue(lua_State* State, const Type* Value)
+		{
+			PushValue(State, *Value);
 		}
 	};
 }

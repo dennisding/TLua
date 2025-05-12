@@ -114,28 +114,60 @@ namespace TLua
 		return 1;
 	}
 
-	static void LoadPrimaryLuaFile(lua_State* state, const FString& basicFileName, const std::string& displayName)
+	static void LoadPrimaryLuaFile(lua_State* State, const FString& BaseName, const std::string& DisplayName)
 	{
-		TArray<uint8> content;
+		TArray<uint8> Content;
 
-		if (!FFileHelper::LoadFileToArray(content, *basicFileName, FILEREAD_Silent)) {
-			UE_LOG(Lua, Error, TEXT("Error in reading basic file[%s]!"), *basicFileName);
+		if (!FFileHelper::LoadFileToArray(Content, *BaseName, FILEREAD_Silent)) {
+			UE_LOG(Lua, Error, TEXT("error while reading basic file:[%s]"), *BaseName);
 			return;
 		}
 
-		content.Add(0); // add the null byte 
-		int result = luaL_loadstring(state, (const char*)content.GetData());
-		if (result == LUA_OK) {
-			result = lua_pcall(state, 0, LUA_MULTRET, 0);
-			if (result != LUA_OK) {
-				UE_LOG(Lua, Error, TEXT("CallError"));
-			}
+		Content.Add(0); // null byte
+		int RecoverIndex = lua_gettop(State);
+		lua_getglobal(State, "load");
+		int TopIndex = lua_gettop(State);
+		lua_pushlstring(State, (const char*)Content.GetData(), Content.NumBytes() - 1);
+		lua_pushstring(State, DisplayName.c_str());
+		lua_call(State, 2, LUA_MULTRET);
+		if (lua_isnoneornil(State, TopIndex)) {
+			FString Name(DisplayName.c_str()); // convert to utf16
+			FString Msg(lua_tostring(State, TopIndex + 1));
+			UE_LOG(Lua, Error, TEXT("Failed in load file[%s], %s"), *Name, *Msg);
+			lua_settop(State, RecoverIndex);
+			return;
 		}
-		else {
-			const char* msg = lua_tostring(state, -1);
-			FString ErrorMsg(msg);
-			UE_LOG(Lua, Error, TEXT("SyntaxError:File %s:%s"), *basicFileName, *ErrorMsg);
+
+		int Result = lua_pcall(State, 0, 0, 0);
+		if (Result != LUA_OK) {
+			// PRINT ERROR MSG
+			FString ErrorMsg(lua_tostring(State, TopIndex));
+			UE_LOG(Lua, Error, TEXT("Failed in call lua code: %s"), *ErrorMsg);
+			lua_settop(State, RecoverIndex);
 		}
+
+		//TArray<uint8> content;
+
+		//if (!FFileHelper::LoadFileToArray(content, *basicFileName, FILEREAD_Silent)) {
+		//	UE_LOG(Lua, Error, TEXT("Error in reading basic file[%s]!"), *basicFileName);
+		//	return;
+		//}
+
+		//content.Add(0); // add the null byte 
+		//lua_getglobal(State, )
+
+		//int result = luaL_loadstring(state, (const char*)content.GetData());
+		//if (result == LUA_OK) {
+		//	result = lua_pcall(state, 0, LUA_MULTRET, 0);
+		//	if (result != LUA_OK) {
+		//		UE_LOG(Lua, Error, TEXT("CallError"));
+		//	}
+		//}
+		//else {
+		//	const char* msg = lua_tostring(state, -1);
+		//	FString ErrorMsg(msg);
+		//	UE_LOG(Lua, Error, TEXT("SyntaxError:File %s:%s"), *basicFileName, *ErrorMsg);
+		//}
 		// CheckState(lua_pcall(state, 3, 1, 0), state)
 		// CheckState(lua_pcall(state, 0, 0, 0), state);
 	}
