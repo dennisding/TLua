@@ -107,7 +107,7 @@ namespace TLua
 		void UpdateVTable(const FName& AttrName, Type* Property)
 		{
 			AttributeInfo* Attribute = GenAttributeInfo(Property);
-			Call("_lua_update_vtable_attr", Name, AttrName, Attribute);
+			Call("_lua_update_vtable_attr", Name, AttrName, (void*)Attribute);
 		}
 
 		void AddAttribute(const FName& AttrName)
@@ -206,7 +206,7 @@ namespace TLua
 		{
 			AttributeInfo* Attribute = GenAttributeInfo(Function);
 
-			Call("_lua_update_vtable_fun", Name, AttrName, Attribute);
+			Call("_lua_update_vtable_fun", Name, AttrName, (void*)Attribute);
 		}
 	private:
 		TMap<FName, AttributeInfo*> Attributes;
@@ -258,8 +258,8 @@ namespace TLua
 
 	static int GetAttribute(lua_State* State)
 	{
-		UObject* Object = GetValue<UObject*>(State, 1);
-		AttributeInfo* Attr = GetValue<AttributeInfo*>(State, 2);
+		UObject* Object = (UObject*)GetValue<void*>(State, 1);
+		AttributeInfo* Attr = (AttributeInfo*)GetValue<void*>(State, 2);
 
 		Attr->Getter(Object, State);
 		return 1;
@@ -267,15 +267,15 @@ namespace TLua
 
 	static int SetAttribute(lua_State* State)
 	{
-		UObject* Object = GetValue<UObject*>(State, 1);
-		AttributeInfo* Attr = GetValue<AttributeInfo*>(State, 2);
+		UObject* Object = (UObject*)GetValue<void*>(State, 1);
+		AttributeInfo* Attr = (AttributeInfo*)GetValue<void*>(State, 2);
 		Attr->Setter(Object, State);
 		return 0;
 	}
 
 	static int CppStructGetName(lua_State* State)
 	{
-		UStruct* Struct = GetValue<UStruct*>(State, 1);
+		UStruct* Struct = (UStruct*)GetValue<void*>(State, 1);
 
 		FString Name = Struct->GetName();
 		FTCHARToUTF8 Convert(Name);
@@ -305,6 +305,90 @@ namespace TLua
 	//	return 0;
 	//}
 
+	int CppObjectGetName(lua_State* State)
+	{
+		UClass* Object = (UClass*)lua_touserdata(State, 1);
+
+		FString Name = Object->GetName();
+		FTCHARToUTF8 Convert(Name);
+		lua_pushlstring(State, (const char*)Convert.Get(), Convert.Length());
+
+		return 1;
+	}
+
+	//int CppObjectGetAttr(lua_State* State)
+	//{
+	//	return 1;
+	//}
+
+	template <typename PropertyType>
+	int CppObjectGetAttr(lua_State* State)
+	{
+		using ValueType = typename PropertyInfo<PropertyType>::ValueType;
+
+		UObject* Object = (UObject*)lua_touserdata(State, 1);
+		PropertyType* Property = (PropertyType*)lua_touserdata(State, 2);
+
+		PushValue(State, 
+			PropertyInfo<PropertyType>::GetValue(Object, Property));
+
+		return 1;
+	}
+
+	template <typename PropertyType>
+	int CppObjectSetAttr(lua_State* State)
+	{
+		using ValueType = typename PropertyInfo<PropertyType>::ValueType;
+		
+		UObject* Object = (UObject*)lua_touserdata(State, 1);
+		PropertyType* Property = (PropertyType*)lua_touserdata(State, 2);
+		ValueType Value = GetValue<ValueType>(State, 3);
+
+		PropertyInfo<PropertyType>::SetValue(Object, Property, Value);
+
+		return 0;
+	}
+
+	int CppObjectCallFun(lua_State* State)
+	{
+		return 0;
+	}
+
+	struct ObjectPropertyVisitor
+	{
+		ObjectPropertyVisitor(lua_State* InState) : State(InState)
+		{
+		}
+
+		template <typename PropertyType>
+		void Visit(PropertyType* Property)
+		{
+			lua_pushlightuserdata(State, Property);
+			lua_pushcfunction(State, &CppObjectGetAttr<PropertyType>);
+			lua_pushcfunction(State, &CppObjectSetAttr<PropertyType>);
+		}
+
+		lua_State* State;
+	};
+
+	int CppObjectGetInfo(lua_State* State)
+	{
+		UClass* Object = (UClass*)lua_touserdata(State, 1);
+		FName Name(lua_tostring(State, 2));
+
+		FProperty* Property = Object->FindPropertyByName(Name);
+		if (Property) {
+			ObjectPropertyVisitor Visitor(State);
+			DispatchProperty(Property, Visitor);
+			return 3;
+		}
+		UFunction* Function = Object->FindFunctionByName(Name);
+		if (Function) {
+			return 1;
+		}
+		return 0;
+	}
+
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
@@ -314,5 +398,8 @@ namespace TLua
 
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
 //		lua_register(State, "_cpp_struct_get_attr", CppStructGetAttr);
+
+		lua_register(State, "_cpp_object_get_name", CppObjectGetName);
+		lua_register(State, "_cpp_object_get_info", CppObjectGetInfo);
 	}
 }

@@ -289,6 +289,11 @@ namespace TLua
 		return lua_tolstring(state, index, &size);
 	}
 
+	bool LuaGetBool(lua_State* State, int Index)
+	{
+		return (bool)lua_toboolean(State, Index);
+	}
+
 	void LuaNewTable(lua_State* state)
 	{
 		lua_newtable(state);
@@ -324,9 +329,14 @@ namespace TLua
 		return lua_absindex(state, index);
 	}
 
-	void LuaPushInteger(lua_State* state, int iv)
+	void LuaPushInteger(lua_State* State, int Value)
 	{
-		lua_pushinteger(state, iv);
+		lua_pushinteger(State, Value);
+	}
+
+	void LuaPushBool(lua_State* State, bool Value)
+	{
+		lua_pushboolean(State, Value);
 	}
 
 	void LuaPushNumber(lua_State* state, double number)

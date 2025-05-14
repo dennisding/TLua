@@ -20,9 +20,11 @@ namespace TLua
 	TLua_API double LuaGetNumber(lua_State* state, int index);
 	TLua_API const char* LuaGetString(lua_State* state, int index);
 	TLua_API const char* LuaGetLString(lua_State* state, int index, size_t& size);
+	TLua_API bool LuaGetBool(lua_State* State, int Index);
 
 	// push value
-	TLua_API void LuaPushInteger(lua_State* state, int iv);
+	TLua_API void LuaPushInteger(lua_State* State, int Value);
+	TLua_API void LuaPushBool(lua_State* State, bool Value);
 	TLua_API void LuaPushNumber(lua_State* state, double number);
 	TLua_API void LuaPushString(lua_State* state, const char* str);
 	TLua_API void LuaPushLString(lua_State* state, const char* buff, int size);

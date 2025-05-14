@@ -57,6 +57,21 @@ namespace TLua
 	};
 
 	template <>
+	struct PropertyInfo<FBoolProperty>
+	{
+		using ValueType = bool;
+		static ValueType GetValue(const void* Obj, FBoolProperty* Property)
+		{
+			return Property->GetPropertyValue_InContainer(Obj);
+		}
+
+		static void SetValue(void* Obj, FBoolProperty* Property, ValueType Value)
+		{
+			Property->SetPropertyValue_InContainer(Obj, (bool)Value);
+		}
+	};
+
+	template <>
 	struct PropertyInfo<FStrProperty>
 	{
 		using ValueType = FString;
@@ -103,6 +118,11 @@ namespace TLua
 		else if (auto* StrProperty = CastField<FStrProperty>(Property)) 
 		{
 			Dispatcher.Visit(StrProperty);
+			// Info->Parameters.Add(new ParameterType<FStrProperty>(StrProperty, ParamIndex));
+		}
+		else if (auto* BoolProperty = CastField<FBoolProperty >(Property))
+		{
+			Dispatcher.Visit(BoolProperty);
 			// Info->Parameters.Add(new ParameterType<FStrProperty>(StrProperty, ParamIndex));
 		}
 		else {

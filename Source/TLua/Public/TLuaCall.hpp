@@ -41,6 +41,12 @@ namespace TLua
 		return PopValue<R>(state);
 	}
 
+	template <typename ...Types>
+	inline void CallMethod(UObject* Object, const char* Name, const Types&... Args)
+	{
+		Call("_lua_call_method", (void*)Object, Name, Args...);
+	}
+
 	using LuaCFun = int (*)(lua_State* state);
 
 	template <typename ...Types>
