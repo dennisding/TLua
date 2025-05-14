@@ -86,22 +86,24 @@ namespace TLua
 		}
 	};
 
-	//template <>
-	//struct PropertyInfo<FObjectProperty>
-	//{
-	//	using ValueType = TObjectPtr<UObject>;
-	//	static ValueType GetValue(const UObject* Obj, FObjectProperty* Property)
-	//	{
-	//		ValueType Value;
-	//		Property->GetValue_InContainer(Obj, &Value);
-	//		return Value;
-	//	}
+	template <>
+	struct PropertyInfo<FObjectProperty>
+	{
+		using ValueType = UObject*;
+		static ValueType GetValue(const UObject* Obj, FObjectProperty* Property)
+		{
+			//ValueType Value;
+			//Property->GetValue_InContainer(Obj, &Value);
+			//return Value;
+			return Property->GetObjectPropertyValue_InContainer(Obj);
+		}
 
-	//	static void SetValue(UObject* Obj, FObjectProperty* Property, const ValueType& Value)
-	//	{
-	//		Property->SetValue_InContainer(Obj, Value);
-	//	}
-	//};
+		static void SetValue(UObject* Obj, FObjectProperty* Property, const ValueType& Value)
+		{
+//			Property->SetValue_InContainer(Obj, Value);
+			Property->SetObjectPropertyValue_InContainer(Obj, Value);
+		}
+	};
 
 	template <typename DispatcherType>
 	void DispatchProperty(FProperty* Property, DispatcherType &Dispatcher)
@@ -123,6 +125,12 @@ namespace TLua
 		else if (auto* BoolProperty = CastField<FBoolProperty >(Property))
 		{
 			Dispatcher.Visit(BoolProperty);
+			// Info->Parameters.Add(new ParameterType<FStrProperty>(StrProperty, ParamIndex));
+
+		}
+		else if (auto* ObjectProperty = CastField<FObjectProperty>(Property))
+		{
+			Dispatcher.Visit(ObjectProperty);
 			// Info->Parameters.Add(new ParameterType<FStrProperty>(StrProperty, ParamIndex));
 		}
 		else {

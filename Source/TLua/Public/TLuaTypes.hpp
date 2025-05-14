@@ -17,8 +17,8 @@ namespace TLua
 	template <typename Type>
 	inline Type PopValue(lua_State* state);
 
-	// <Type, is_struct, is_actorcomponent>
-	template <typename Type, typename = void, typename = void>
+	// <Type, is_struct, is_actorcomponent, is_actor>
+	template <typename Type, typename = void, typename = void, typename = void>
 	struct TypeInfo {};
 
 	// auto convert
@@ -274,6 +274,21 @@ namespace TLua
 		}
 	};
 
+	//template <>
+	//struct TypeInfo<UObject*>
+	//{
+	//	inline static UObject* GetValue(lua_State* state, int index)
+	//	{
+	//		return (UObject*)LuaGetUserData(state, index);
+	//	}
+
+	//	inline static void PushValue(lua_State* state, UObject* ptr)
+	//	{
+	//		LuaPushUserData(state, ptr);
+	//	}
+	//};
+
+
 	template <typename ValueType>
 	struct TypeInfo<TArray<ValueType>>
 	{
@@ -420,15 +435,38 @@ namespace TLua
 
 		inline static T GetValue(lua_State* State, int Index)
 		{
-			return TLua::GetValue<T>(State, Index);
+//			return TLua::GetValue<T>(State, Index);
+			return nullptr;
 		}
 
 		inline static void PushValue(lua_State* State, const T& Value)
 		{
 			LuaNewTable(State);
-			SetTableByName(State, -1, "_ct", (void*)Value->StaticClass());
+			SetTableByName(State, -1, "_ct", (void*)Value->GetClass());
 			SetTableByName(State, -1, "_co", (void*)Value);
 			LuaGetGlobal(State, "_lc");
+			LuaSetMetatable(State, -2);
+		}
+	};
+
+	// Actor and it's child class
+	template <typename Type>
+	struct TypeInfo<Type, void,
+		std::void_t<std::enable_if_t<std::is_base_of_v<AActor, std::remove_pointer_t<Type>>>>>
+	{
+
+		inline static Type GetValue(lua_State* State, int Index)
+		{
+//			return TLua::GetValue<Type>(State, Index);
+			return nullptr;
+		}
+
+		inline static void PushValue(lua_State* State, const Type& Value)
+		{
+			LuaNewTable(State);
+			SetTableByName(State, -1, "_ct", (void*)Value->GetClass());
+			SetTableByName(State, -1, "_co", (void*)Value);
+			LuaGetGlobal(State, "_la");
 			LuaSetMetatable(State, -2);
 		}
 	};
