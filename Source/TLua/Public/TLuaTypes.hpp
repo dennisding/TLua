@@ -274,6 +274,26 @@ namespace TLua
 		}
 	};
 
+	template <>
+	struct TypeInfo<UObject*>
+	{
+		inline static void PushValue(lua_State* State, UObject* Value)
+		{
+			LuaPushUserData(State, Value);
+		}
+
+		inline static UObject* GetValue(lua_State* State, int Index)
+		{
+			if (!LuaIsTable(State, Index)) {
+				return nullptr;
+			}
+			LuaGetField(State, Index, "_co");
+			UObject* Result = (UObject*)LuaGetUserData(State, -1);
+			LuaPop(State, 1);
+			return Result;
+		}
+	};
+
 	//template <>
 	//struct TypeInfo<UObject*>
 	//{

@@ -90,7 +90,7 @@ namespace TLua
 	struct PropertyInfo<FObjectProperty>
 	{
 		using ValueType = UObject*;
-		static ValueType GetValue(const UObject* Obj, FObjectProperty* Property)
+		static ValueType GetValue(const void* Obj, FObjectProperty* Property)
 		{
 			//ValueType Value;
 			//Property->GetValue_InContainer(Obj, &Value);
@@ -98,7 +98,7 @@ namespace TLua
 			return Property->GetObjectPropertyValue_InContainer(Obj);
 		}
 
-		static void SetValue(UObject* Obj, FObjectProperty* Property, const ValueType& Value)
+		static void SetValue(void* Obj, FObjectProperty* Property, const ValueType& Value)
 		{
 //			Property->SetValue_InContainer(Obj, Value);
 			Property->SetObjectPropertyValue_InContainer(Obj, Value);
@@ -130,8 +130,25 @@ namespace TLua
 		}
 		else if (auto* ObjectProperty = CastField<FObjectProperty>(Property))
 		{
-			Dispatcher.Visit(ObjectProperty);
+//			Dispatcher.Visit(ObjectProperty);
 			// Info->Parameters.Add(new ParameterType<FStrProperty>(StrProperty, ParamIndex));
+			UClass* PropertyClass = ObjectProperty->PropertyClass;
+			if (PropertyClass->IsChildOf(UActorComponent::StaticClass()))
+			{
+				// lua_pushcfunction(State, &CppObjectGetAttr<PropertyType>);
+				Dispatcher.Visit(ObjectProperty, (UActorComponent*)nullptr);
+				//lua_pushcfunction(State, &CppObjectGetObject<UActorComponent>);
+				//lua_pushcfunction(State, &CppObjectSetObject<UActorComponent>);
+			}
+			else if (PropertyClass->IsChildOf(AActor::StaticClass()))
+			{
+				Dispatcher.Visit(ObjectProperty, (AActor*)nullptr);
+				//lua_pushcfunction(State, &CppObjectGetObject<AActor>);
+				//lua_pushcfunction(State, &CppObjectSetObject<AActor>);
+			}
+			else 
+			{
+			}
 		}
 		else {
 			UE_LOG(Lua, Warning, TEXT("unhandled attribute:%s"), *Property->GetName());

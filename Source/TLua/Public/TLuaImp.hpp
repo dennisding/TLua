@@ -41,4 +41,7 @@ namespace TLua
 	TLua_API int LuaAbsIndex(lua_State* state, int index);
 
 	TLua_API void LuaPushCppType(lua_State* State, int CppType);
+
+	TLua_API bool LuaIsTable(lua_State* State, int Index);
+	TLua_API void LuaGetField(lua_State* State, int Index, const char* Name);
 }

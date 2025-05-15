@@ -12,12 +12,170 @@
 
 namespace TLua
 {
-	//class ParameterBase
-	//{
-	//public:
-	//	virtual void SetParameter(uint8* Params, lua_State* State) = 0;
-	//	virtual void DestroyValue_InContainer(void *Container) = 0;
-	//};
+	class ParameterBase
+	{
+	public:
+		virtual void SetParameter(void* Params, lua_State* State) = 0;
+		virtual void DestroyValue_InContainer(void *Container) = 0;
+		// push to state
+		virtual void PushValue(lua_State* State, void* Parameters) = 0;
+	};
+
+	template <typename PropertyType>
+	class ParameterType : public ParameterBase
+	{
+	public:
+		ParameterType(PropertyType* InProperty, int InLuaIndex)
+			: Property(InProperty), LuaIndex(InLuaIndex)
+		{
+		}
+
+		virtual void SetParameter(void* Parameters, lua_State* State) override
+		{
+			using PropertyInfoType = PropertyInfo<PropertyType>;
+			PropertyInfoType::SetValue(Parameters, Property,
+				GetValue<typename PropertyInfoType::ValueType>(State, LuaIndex));
+		}
+
+		virtual void DestroyValue_InContainer(void* Container) override
+		{
+			Property->DestroyValue_InContainer(Container);
+		}
+
+		virtual void PushValue(lua_State* State, void* Parameters) override
+		{
+			using PropertyInfoType = PropertyInfo<PropertyType>;
+
+			TLua::PushValue(State,
+				PropertyInfo<PropertyType>::GetValue(Parameters, Property));
+		}
+
+	private:
+		PropertyType* Property;
+		int LuaIndex;
+	};
+
+	class ParameterVisitor
+	{
+	public:
+		//ParameterVisitor(int InIndex, TArray<ParameterBase*>* InParameters)
+		//	: Index(InIndex), Parameters(InParameters)
+		//{
+		//}
+		ParameterVisitor(int InIndex = -1) : Index(InIndex), Parameter(nullptr)
+		{
+		}
+		
+		template <typename PropertyType> 
+		inline void Visit(PropertyType* Property)
+		{
+//			Parameters->Add(new ParameterType<PropertyType>(Property, Index));
+			Parameter = new ParameterType<PropertyType>(Property, Index);
+		}
+
+		void Visit(FObjectProperty* Property, UActorComponent*)
+		{
+			Parameter = new ParameterType<FObjectProperty>(Property, Index);
+		}
+
+		void Visit(FObjectProperty* Property, AActor*)
+		{
+			Parameter = new ParameterType<FObjectProperty>(Property, Index);
+		}
+
+	public:
+		int Index;
+		ParameterBase* Parameter;
+//		TArray<ParameterBase*>* Parameters;
+	};
+
+	class FunctionContext
+	{
+	public:
+		FunctionContext(UFunction* InFunction) : Function(InFunction), Return(nullptr)
+		{
+			ProcessParameter();
+			ProcessReturn();
+		}
+
+		//		for (TFieldIterator<FProperty> It(Function); It; ++It) {
+//			FProperty* Property = *It;
+//			ParamIndex += 1;
+
+//			ParameterVisitor Visitor(ParamIndex, Info);
+//			DispatchProperty(Property, Visitor);
+//		}
+
+		int Call(lua_State* State, UObject* Object)
+		{
+			// check the parameter size
+			int Top = lua_gettop(State);
+			if (Top != Parameters.Num() + 2) {	// self, context, args...
+				UE_LOG(Lua, Error, TEXT("invalid argument number, %s, %d"), *Function->GetName(), Function->NumParms);
+				return 0;
+			}
+
+			void* ParameterMemory = (void*)FMemory_Alloca(Function->ParmsSize);
+			FMemory::Memzero(ParameterMemory, Function->ParmsSize);
+
+			// set the parameter
+			for (ParameterBase* Parameter : Parameters) {
+				Parameter->SetParameter(ParameterMemory, State);
+			}
+				
+			Object->ProcessEvent(Function, ParameterMemory);
+
+			// free the parameter
+			for (ParameterBase* Parameter : Parameters) {
+				Parameter->DestroyValue_InContainer(ParameterMemory);
+			}
+
+			if (Return) {
+				// push to lua 
+				Return->PushValue(State, ParameterMemory);
+				// release the memory
+				Return->DestroyValue_InContainer(ParameterMemory);
+				return 1;
+			}
+
+			return 0;
+		}
+	private:
+		void ProcessParameter()
+		{
+			int Index = 2;	// start from 2, // lua_call(self, context, args...)
+			for (TFieldIterator<FProperty> It(Function); It; ++It) {
+				FProperty* Property = *It;
+				Index += 1;
+
+				if (Property->HasAnyPropertyFlags(CPF_ReturnParm)) {
+					continue;
+				}
+
+				ParameterVisitor Visitor(Index);
+				DispatchProperty(Property, Visitor);
+
+				Parameters.Add(Visitor.Parameter);
+			}
+		}
+
+		void ProcessReturn()
+		{
+			FProperty* Property = Function->GetReturnProperty();
+			if (!Property) {
+				return;
+			}
+
+			ParameterVisitor Visitor;
+			DispatchProperty(Property, Visitor);
+			Return = Visitor.Parameter;
+		}
+
+	private:
+		UFunction* Function;
+		TArray<ParameterBase*> Parameters;
+		ParameterBase* Return;
+	};
 
 	//struct AttributeInfo
 	//{
@@ -27,51 +185,8 @@ namespace TLua
 	//	TArray<ParameterBase*> Parameters;
 	//};
 
-	//template <typename PropertyType>
-	//class ParameterType : public ParameterBase
-	//{
-	//public:
-	//	ParameterType(PropertyType* InProperty, int InLuaIndex)
-	//		: Property(InProperty), LuaIndex(InLuaIndex)
-	//	{
-	//	}
 
-	//	virtual void SetParameter(uint8* Params, lua_State* State) override
-	//	{
-	//		using PropertyInfoType = PropertyInfo<PropertyType>;
-	//		PropertyInfoType::SetValue(Params, Property,
-	//			GetValue<typename PropertyInfoType::ValueType>(State, LuaIndex));
-	//	}
-
-	//	virtual void DestroyValue_InContainer(void* Container)
-	//	{
-	//		Property->DestroyValue_InContainer(Container);
-	//	}
-
-	//private:
-	//	PropertyType* Property;
-	//	int LuaIndex;
-	//};
-
-	//class ParameterVisitor
-	//{
-	//public:
-	//	ParameterVisitor(int InIndex, AttributeInfo* InInfo)
-	//		: Index(InIndex), Info(InInfo)
-	//	{
-
-	//	}
-	//	
-	//	template <typename PropertyType> 
-	//	inline void Visit(PropertyType* Property)
-	//	{
-	//		Info->Parameters.Add(new ParameterType<PropertyType>(Property, Index));
-	//	}
-
-	//private:
-	//	int Index;
-	//	AttributeInfo* Info;
-	//};
+	
 
 	//class VTable;
 
@@ -385,11 +500,6 @@ namespace TLua
 		return 0;
 	}
 
-	int CppObjectCallFun(lua_State* State)
-	{
-		return 0;
-	}
-
 	struct ObjectPropertyVisitor
 	{
 		ObjectPropertyVisitor(lua_State* InState) : State(InState)
@@ -397,36 +507,69 @@ namespace TLua
 		}
 
 		template <typename PropertyType>
-		void Visit(PropertyType* Property)
+		void Visit(PropertyType* Property, void* = nullptr)
 		{
 			lua_pushlightuserdata(State, Property);
 			lua_pushcfunction(State, &CppObjectGetAttr<PropertyType>);
 			lua_pushcfunction(State, &CppObjectSetAttr<PropertyType>);
 		}
 
-		template <>
-		void Visit<FObjectProperty>(FObjectProperty* Property)
+		void Visit(FObjectProperty* Property, UActorComponent* = nullptr)
 		{
 			lua_pushlightuserdata(State, Property);
-
-			UClass* PropertyClass = Property->PropertyClass;
-			if (PropertyClass->IsChildOf(UActorComponent::StaticClass()))
-			{
-				// lua_pushcfunction(State, &CppObjectGetAttr<PropertyType>);
-				lua_pushcfunction(State, &CppObjectGetObject<UActorComponent>);
-				lua_pushcfunction(State, &CppObjectSetObject<UActorComponent>);
-			}
-			else if (PropertyClass->IsChildOf(AActor::StaticClass()))
-			{
-				lua_pushcfunction(State, &CppObjectGetObject<AActor>);
-				lua_pushcfunction(State, &CppObjectSetObject<AActor>);
-			}
-			else 
-			{
-				lua_pushnil(State);
-				lua_pushnil(State);
-			}
+			lua_pushcfunction(State, &CppObjectGetObject<UActorComponent>);
+			lua_pushcfunction(State, &CppObjectSetObject<UActorComponent>);
 		}
+
+		void Visit(FObjectProperty* Property, AActor* = nullptr)
+		{
+			lua_pushlightuserdata(State, Property);
+			lua_pushcfunction(State, &CppObjectGetObject<AActor>);
+			lua_pushcfunction(State, &CppObjectSetObject<AActor>);
+		}
+
+		//template <typename ObjectType>
+		//void VisitObject(FObjectProperty* Property, ObjectType*Ptr);
+
+		//template <>
+		//void VisitObject(FObjectProperty* Property, UActorComponent*)
+		//{
+		//	lua_pushlightuserdata(State, Property);
+		//	lua_pushcfunction(State, &CppObjectGetObject<UActorComponent>);
+		//	lua_pushcfunction(State, &CppObjectSetObject<UActorComponent>);
+		//}
+
+		//template <>
+		//void VisitObject<AActor>(FObjectProperty* Property, AActor*)
+		//{
+		//	lua_pushlightuserdata(State, Property);
+		//	lua_pushcfunction(State, &CppObjectGetObject<AActor>);
+		//	lua_pushcfunction(State, &CppObjectSetObject<AActor>);
+		//}
+
+		//template <>
+		//void Visit<FObjectProperty>(FObjectProperty* Property)
+		//{
+		//	lua_pushlightuserdata(State, Property);
+
+		//	UClass* PropertyClass = Property->PropertyClass;
+		//	if (PropertyClass->IsChildOf(UActorComponent::StaticClass()))
+		//	{
+		//		// lua_pushcfunction(State, &CppObjectGetAttr<PropertyType>);
+		//		lua_pushcfunction(State, &CppObjectGetObject<UActorComponent>);
+		//		lua_pushcfunction(State, &CppObjectSetObject<UActorComponent>);
+		//	}
+		//	else if (PropertyClass->IsChildOf(AActor::StaticClass()))
+		//	{
+		//		lua_pushcfunction(State, &CppObjectGetObject<AActor>);
+		//		lua_pushcfunction(State, &CppObjectSetObject<AActor>);
+		//	}
+		//	else 
+		//	{
+		//		lua_pushnil(State);
+		//		lua_pushnil(State);
+		//	}
+		//}
 
 		lua_State* State;
 	};
@@ -449,20 +592,33 @@ namespace TLua
 	//	return 0;
 	//}
 
-	int CppObjectGetInfo(lua_State* State)
+	int CppObjectCallFun(lua_State* State)
 	{
 		UClass* Object = (UClass*)lua_touserdata(State, 1);
+		FunctionContext* Function = (FunctionContext*)lua_touserdata(State, 2);
+
+		return Function->Call(State, Object);
+	}
+
+	int CppObjectGetInfo(lua_State* State)
+	{
+		UClass* Class = (UClass*)lua_touserdata(State, 1);
 		FName Name(lua_tostring(State, 2));
 
-		FProperty* Property = Object->FindPropertyByName(Name);
+		FProperty* Property = Class->FindPropertyByName(Name);
 		if (Property) {
 			ObjectPropertyVisitor Visitor(State);
 			DispatchProperty(Property, Visitor);
-			return 3;
+			return 3; // property, getter, setter
 		}
-		UFunction* Function = Object->FindFunctionByName(Name);
+		UFunction* Function = Class->FindFunctionByName(Name);
 		if (Function) {
-			return 1;
+			lua_pushnil(State);
+			// every UFunction have only one context at most
+			// so let the memory free.
+			FunctionContext* Context = new FunctionContext(Function);
+			lua_pushlightuserdata(State, Context);
+			return 2; // is_property, FunctionContext
 		}
 		return 0;
 	}
@@ -479,5 +635,6 @@ namespace TLua
 
 		lua_register(State, "_cpp_object_get_name", CppObjectGetName);
 		lua_register(State, "_cpp_object_get_info", CppObjectGetInfo);
+		lua_register(State, "_cpp_object_call_fun", CppObjectCallFun);
 	}
 }

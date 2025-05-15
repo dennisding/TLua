@@ -374,5 +374,15 @@ namespace TLua
 	{
 		lua_setmetatable(State, Index);
 	}
+
+	bool LuaIsTable(lua_State* State, int Index)
+	{
+		return lua_istable(State, Index);
+	}
+
+	void LuaGetField(lua_State* State, int Index, const char* Name)
+	{
+		lua_getfield(State, Index, Name);
+	}
 }
 
