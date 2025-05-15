@@ -145,31 +145,6 @@ namespace TLua
 			UE_LOG(Lua, Error, TEXT("Failed in call lua code: %s"), *ErrorMsg);
 			lua_settop(State, RecoverIndex);
 		}
-
-		//TArray<uint8> content;
-
-		//if (!FFileHelper::LoadFileToArray(content, *basicFileName, FILEREAD_Silent)) {
-		//	UE_LOG(Lua, Error, TEXT("Error in reading basic file[%s]!"), *basicFileName);
-		//	return;
-		//}
-
-		//content.Add(0); // add the null byte 
-		//lua_getglobal(State, )
-
-		//int result = luaL_loadstring(state, (const char*)content.GetData());
-		//if (result == LUA_OK) {
-		//	result = lua_pcall(state, 0, LUA_MULTRET, 0);
-		//	if (result != LUA_OK) {
-		//		UE_LOG(Lua, Error, TEXT("CallError"));
-		//	}
-		//}
-		//else {
-		//	const char* msg = lua_tostring(state, -1);
-		//	FString ErrorMsg(msg);
-		//	UE_LOG(Lua, Error, TEXT("SyntaxError:File %s:%s"), *basicFileName, *ErrorMsg);
-		//}
-		// CheckState(lua_pcall(state, 3, 1, 0), state)
-		// CheckState(lua_pcall(state, 0, 0, 0), state);
 	}
 
 	void Init()

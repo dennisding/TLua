@@ -58,10 +58,6 @@ namespace TLua
 	class ParameterVisitor
 	{
 	public:
-		//ParameterVisitor(int InIndex, TArray<ParameterBase*>* InParameters)
-		//	: Index(InIndex), Parameters(InParameters)
-		//{
-		//}
 		ParameterVisitor(int InIndex = -1) : Index(InIndex), Parameter(nullptr)
 		{
 		}
@@ -69,7 +65,6 @@ namespace TLua
 		template <typename PropertyType> 
 		inline void Visit(PropertyType* Property)
 		{
-//			Parameters->Add(new ParameterType<PropertyType>(Property, Index));
 			Parameter = new ParameterType<PropertyType>(Property, Index);
 		}
 
@@ -86,7 +81,6 @@ namespace TLua
 	public:
 		int Index;
 		ParameterBase* Parameter;
-//		TArray<ParameterBase*>* Parameters;
 	};
 
 	class FunctionContext
@@ -97,14 +91,6 @@ namespace TLua
 			ProcessParameter();
 			ProcessReturn();
 		}
-
-		//		for (TFieldIterator<FProperty> It(Function); It; ++It) {
-//			FProperty* Property = *It;
-//			ParamIndex += 1;
-
-//			ParameterVisitor Visitor(ParamIndex, Info);
-//			DispatchProperty(Property, Visitor);
-//		}
 
 		int Call(lua_State* State, UObject* Object)
 		{
@@ -177,217 +163,6 @@ namespace TLua
 		ParameterBase* Return;
 	};
 
-	//struct AttributeInfo
-	//{
-	//public:
-	//	std::function<void(UObject*, lua_State*)> Setter;
-	//	std::function<void(UObject*, lua_State*)> Getter;
-	//	TArray<ParameterBase*> Parameters;
-	//};
-
-
-	
-
-	//class VTable;
-
-	//class AttributeVisitor
-	//{
-	//public:
-	//	AttributeVisitor(VTable* InTable, const FString& InTypeName, const FName& InAttrName)
-	//		: Table(InTable), TypeName(InTypeName), AttrName(InAttrName)
-	//	{
-	//	
-	//	}
-
-	//	template <typename PropertyType>
-	//	void Visit(PropertyType* Property);
-
-	//private:
-	//	VTable* Table;
-	//	FString TypeName;
-	//	FName AttrName;
-	//};
-
-	// because every class have only one vtable
-	// we don't consider the memory leak here.
-	//class VTable
-	//{
-	//public:
-	//	explicit VTable(const FString& TypeId) : Class(nullptr), Name(TypeId)
-	//	{
-	//		Class = LoadObject<UClass>(nullptr, *TypeId);
-	//	}
-
-	//	template <typename Type>
-	//	void UpdateVTable(const FName& AttrName, Type* Property)
-	//	{
-	//		AttributeInfo* Attribute = GenAttributeInfo(Property);
-	//		Call("_lua_update_vtable_attr", Name, AttrName, (void*)Attribute);
-	//	}
-
-	//	void AddAttribute(const FName& AttrName)
-	//	{
-	//		if (!Class) {
-	//			EmptyAttribute(AttrName);
-	//			return;
-	//		}
-
-	//		auto Finded = Attributes.Find(AttrName);
-	//		if (Finded) { // Error, you can only set the attribute once
-	//			EmptyAttribute(AttrName);
-	//			return;
-	//		}
-
-	//		FProperty* Property = Class->FindPropertyByName(AttrName);
-	//		if (Property) {
-	//			UpdateProperty(AttrName, Property);
-	//			return;
-	//		}
-
-	//		UFunction* Function = Class->FindFunctionByName(AttrName);
-	//		if (Function) {
-	//			UpdateFunction(AttrName, Function);
-	//			return;
-	//		}
-	//		EmptyAttribute(AttrName);
-	//	}
-
-	//private:
-	//	void EmptyAttribute(const FName& AttrName)
-	//	{
-	//		Attributes.Add(AttrName, nullptr);
-	//		Call("_lua_update_vtable_attr", Name, AttrName, 0);
-	//	}
-
-	//	void UpdateProperty(const FName& AttrName, FProperty* Property)
-	//	{
-	//		AttributeVisitor Visitor(this, Name, AttrName);
-	//		DispatchProperty(Property, Visitor);
-	//	}
-
-	//	template <typename PropertyType>
-	//	AttributeInfo* GenAttributeInfo(PropertyType *Property)
-	//	{
-	//		AttributeInfo* Attribute = new AttributeInfo;
-
-	//		Attribute->Getter = [Property](UObject* Obj, lua_State* State) {
-	//			PushValue(State, PropertyInfo<PropertyType>::GetValue(Obj, Property));
-	//			};
-
-	//		Attribute->Setter = [Property](UObject* Obj, lua_State* State) {
-	//			using InfoType = PropertyInfo<PropertyType>;
-	//			InfoType::SetValue(Obj, Property, 
-	//				GetValue<InfoType::ValueType>(State, -1));
-	//			};
-
-	//		return Attribute;
-	//	}
-
-	//	AttributeInfo* GenAttributeInfo(UFunction* Function)
-	//	{
-	//		AttributeInfo* Info = new AttributeInfo;
-
-	//		// dispatch the property
-	//		int ParamIndex = 2;				// getter(UObject*, AttributeInfo*,Args...)
-	//		for (TFieldIterator<FProperty> It(Function); It; ++It) {
-	//			FProperty* Property = *It;
-	//			ParamIndex += 1;
-
-	//			ParameterVisitor Visitor(ParamIndex, Info);
-	//			DispatchProperty(Property, Visitor);
-	//		}
-
-	//		Info->Getter = [Function, Info](UObject* Obj, lua_State* State) {
-	//				uint8* Params = (uint8*)FMemory_Alloca(Function->ParmsSize);
-	//				FMemory::Memzero(Params, Function->ParmsSize);
-
-	//				// set the parameter
-	//				for (ParameterBase* Parameter : Info->Parameters) {
-	//					Parameter->SetParameter(Params, State);
-	//				}
-	//				
-	//				Obj->ProcessEvent(Function, Params);
-
-	//				// free the parameter
-	//				for (ParameterBase* Parameter : Info->Parameters) {
-	//					Parameter->DestroyValue_InContainer(Params);
-	//				}
-	//			};
-	//		// Info->Setter = Info->Getter;
-	//		return Info;
-	//	}
-
-	//	void UpdateFunction(const FName& AttrName, UFunction* Function)
-	//	{
-	//		AttributeInfo* Attribute = GenAttributeInfo(Function);
-
-	//		Call("_lua_update_vtable_fun", Name, AttrName, (void*)Attribute);
-	//	}
-	//private:
-	//	TMap<FName, AttributeInfo*> Attributes;
-	//	UClass* Class;
-	//	FString Name;
-	//};
-
-	//class VTableMgr
-	//{
-	//public:
-	//	static VTable* GetVTable(const FString& TypeId)
-	//	{
-	//		static VTableMgr Mgr;
-
-	//		auto Finded = Mgr.VTables.Find(TypeId);
-	//		if (Finded) {
-	//			return *Finded;
-	//		}
-	//		// create new vtable
-	//		VTable* NewVTable = new VTable(TypeId);
-	//		Mgr.VTables.Add(TypeId, NewVTable);
-	//		return NewVTable;
-	//	}
-
-	//	TMap<FString, VTable*> VTables;
-	//};
-
-	//template <typename PropertyType>
-	//void AttributeVisitor::Visit(PropertyType* Property)
-	//{
-	//	Table->UpdateVTable(AttrName, Property);
-	//}
-
-	//static int UpdateVTable(lua_State* State)
-	//{
-	//	FString TypeId = GetValue<FString>(State, -2);
-	//	FName Name = GetValue<FName>(State, -1);
-
-	//	UClass* Class = LoadObject<UClass>(nullptr, *TypeId, nullptr, LOAD_Quiet);
-	//	if (Class == nullptr) {
-	//		return 0;
-	//	}
-
-	//	VTable* Table = VTableMgr::GetVTable(TypeId);
-	//	Table->AddAttribute(Name);
-
-	//	return 0;
-	//}
-
-	//static int GetAttribute(lua_State* State)
-	//{
-	//	UObject* Object = (UObject*)GetValue<void*>(State, 1);
-	//	AttributeInfo* Attr = (AttributeInfo*)GetValue<void*>(State, 2);
-
-	//	Attr->Getter(Object, State);
-	//	return 1;
-	//}
-
-	//static int SetAttribute(lua_State* State)
-	//{
-	//	UObject* Object = (UObject*)GetValue<void*>(State, 1);
-	//	AttributeInfo* Attr = (AttributeInfo*)GetValue<void*>(State, 2);
-	//	Attr->Setter(Object, State);
-	//	return 0;
-	//}
-
 	static int CppStructGetName(lua_State* State)
 	{
 		UStruct* Struct = (UStruct*)GetValue<void*>(State, 1);
@@ -399,38 +174,6 @@ namespace TLua
 		return 1;
 	}
 
-	//static int CppStructGetAttr(lua_State* State)
-	//{
-	//	UStruct* Struct = GetValue<UStruct*>(State, 1);
-	//	const char* LuaName = lua_tostring(State, 2);
-	//	FName Name(LuaName);
-
-	//	FProperty* Property = Struct->FindPropertyByName(Name);
-	//	if (Property) {
-	//		// update property
-	//		return 1;
-	//	}
-
-	//	UFunction* Function = Struct->FindFunction(Name);
-	//	if (Function) {
-	//		// update function
-	//		return 1;
-	//	}
-
-	//	return 0;
-	//}
-
-	//int CppObjectGetName(lua_State* State)
-	//{
-	//	UClass* Object = (UClass*)lua_touserdata(State, 1);
-
-	//	FString Name = Object->GetName();
-	//	FTCHARToUTF8 Convert(Name);
-	//	lua_pushlstring(State, (const char*)Convert.Get(), Convert.Length());
-
-	//	return 1;
-	//}
-
 	int CppObjectGetName(lua_State* State)
 	{
 		UClass* Object = (UClass*)lua_touserdata(State, 1);
@@ -441,11 +184,6 @@ namespace TLua
 
 		return 1;
 	}
-
-	//int CppObjectGetAttr(lua_State* State)
-	//{
-	//	return 1;
-	//}
 
 	template <typename PropertyType>
 	int CppObjectGetAttr(lua_State* State)
@@ -528,69 +266,8 @@ namespace TLua
 			lua_pushcfunction(State, &CppObjectSetObject<AActor>);
 		}
 
-		//template <typename ObjectType>
-		//void VisitObject(FObjectProperty* Property, ObjectType*Ptr);
-
-		//template <>
-		//void VisitObject(FObjectProperty* Property, UActorComponent*)
-		//{
-		//	lua_pushlightuserdata(State, Property);
-		//	lua_pushcfunction(State, &CppObjectGetObject<UActorComponent>);
-		//	lua_pushcfunction(State, &CppObjectSetObject<UActorComponent>);
-		//}
-
-		//template <>
-		//void VisitObject<AActor>(FObjectProperty* Property, AActor*)
-		//{
-		//	lua_pushlightuserdata(State, Property);
-		//	lua_pushcfunction(State, &CppObjectGetObject<AActor>);
-		//	lua_pushcfunction(State, &CppObjectSetObject<AActor>);
-		//}
-
-		//template <>
-		//void Visit<FObjectProperty>(FObjectProperty* Property)
-		//{
-		//	lua_pushlightuserdata(State, Property);
-
-		//	UClass* PropertyClass = Property->PropertyClass;
-		//	if (PropertyClass->IsChildOf(UActorComponent::StaticClass()))
-		//	{
-		//		// lua_pushcfunction(State, &CppObjectGetAttr<PropertyType>);
-		//		lua_pushcfunction(State, &CppObjectGetObject<UActorComponent>);
-		//		lua_pushcfunction(State, &CppObjectSetObject<UActorComponent>);
-		//	}
-		//	else if (PropertyClass->IsChildOf(AActor::StaticClass()))
-		//	{
-		//		lua_pushcfunction(State, &CppObjectGetObject<AActor>);
-		//		lua_pushcfunction(State, &CppObjectSetObject<AActor>);
-		//	}
-		//	else 
-		//	{
-		//		lua_pushnil(State);
-		//		lua_pushnil(State);
-		//	}
-		//}
-
 		lua_State* State;
 	};
-
-	//int CppObjectGetInfo(lua_State* State)
-	//{
-	//	UClass* Object = (UClass*)lua_touserdata(State, 1);
-	//	FName Name(lua_tostring(State, 2));
-
-	//	FProperty* Property = Object->FindPropertyByName(Name);
-	//	if (Property) {
-	//		ObjectPropertyVisitor Visitor(State);
-	//		DispatchProperty(Property, Visitor);
-	//		return 3;
-	//	}
-	//	UFunction* Function = Object->FindFunctionByName(Name);
-	//	if (Function) {
-	//		return 1;
-	//	}
-	//	return 0;
-	//}
 
 	int CppObjectCallFun(lua_State* State)
 	{
@@ -626,12 +303,8 @@ namespace TLua
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
-		//lua_register(State, "_cpp_update_vtable", UpdateVTable);
-		//lua_register(State, "_cpp_get_attr", GetAttribute);
-		//lua_register(State, "_cpp_set_attr", SetAttribute);
 
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
-//		lua_register(State, "_cpp_struct_get_attr", CppStructGetAttr);
 
 		lua_register(State, "_cpp_object_get_name", CppObjectGetName);
 		lua_register(State, "_cpp_object_get_info", CppObjectGetInfo);

@@ -92,15 +92,11 @@ namespace TLua
 		using ValueType = UObject*;
 		static ValueType GetValue(const void* Obj, FObjectProperty* Property)
 		{
-			//ValueType Value;
-			//Property->GetValue_InContainer(Obj, &Value);
-			//return Value;
 			return Property->GetObjectPropertyValue_InContainer(Obj);
 		}
 
 		static void SetValue(void* Obj, FObjectProperty* Property, const ValueType& Value)
 		{
-//			Property->SetValue_InContainer(Obj, Value);
 			Property->SetObjectPropertyValue_InContainer(Obj, Value);
 		}
 	};
@@ -111,7 +107,6 @@ namespace TLua
 		if (auto* IntProperty = CastField<FIntProperty>(Property))
 		{
 			Dispatcher.Visit(IntProperty);
-			// Info->Parameters.Add(new ParameterType<FIntProperty>(IntProperty, ParamIndex));
 		}
 		else if (auto* FloatProperty = CastField<FFloatProperty>(Property))
 		{
@@ -120,31 +115,22 @@ namespace TLua
 		else if (auto* StrProperty = CastField<FStrProperty>(Property)) 
 		{
 			Dispatcher.Visit(StrProperty);
-			// Info->Parameters.Add(new ParameterType<FStrProperty>(StrProperty, ParamIndex));
 		}
 		else if (auto* BoolProperty = CastField<FBoolProperty >(Property))
 		{
 			Dispatcher.Visit(BoolProperty);
-			// Info->Parameters.Add(new ParameterType<FStrProperty>(StrProperty, ParamIndex));
 
 		}
 		else if (auto* ObjectProperty = CastField<FObjectProperty>(Property))
 		{
-//			Dispatcher.Visit(ObjectProperty);
-			// Info->Parameters.Add(new ParameterType<FStrProperty>(StrProperty, ParamIndex));
 			UClass* PropertyClass = ObjectProperty->PropertyClass;
 			if (PropertyClass->IsChildOf(UActorComponent::StaticClass()))
 			{
-				// lua_pushcfunction(State, &CppObjectGetAttr<PropertyType>);
 				Dispatcher.Visit(ObjectProperty, (UActorComponent*)nullptr);
-				//lua_pushcfunction(State, &CppObjectGetObject<UActorComponent>);
-				//lua_pushcfunction(State, &CppObjectSetObject<UActorComponent>);
 			}
 			else if (PropertyClass->IsChildOf(AActor::StaticClass()))
 			{
 				Dispatcher.Visit(ObjectProperty, (AActor*)nullptr);
-				//lua_pushcfunction(State, &CppObjectGetObject<AActor>);
-				//lua_pushcfunction(State, &CppObjectSetObject<AActor>);
 			}
 			else 
 			{

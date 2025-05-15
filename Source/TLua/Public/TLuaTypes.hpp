@@ -190,44 +190,6 @@ namespace TLua
 		}
 	};
 
-	//template <>
-	//struct TypeInfo<CppLuaType>
-	//{
-	//	inline static void PushValue(lua_State* State, const CppLuaType& Value)
-	//	{
-	//		LuaPushInteger(State, Value);
-	//		LuaGetTable(State, -1);
-	//	}
-	//};
-
-	//template <typename Type>
-	//struct TypeInfo<UE::Math::TVector<Type>>
-	//{
-	//	using Vector = FVector3d;
-	//	inline static Vector GetValue(lua_State* State, int Index)
-	//	{
-	//		Vector Result;
-	//		Result.X = GetTableByName<double>(State, -1, "x");
-	//		Result.Y = GetTableByName<double>(State, -1, "y");
-	//		Result.Z = GetTableByName<double>(State, -1, "z");
-
-	//		return Result;
-	//	}
-
-	//	inline static void PushValue(lua_State* State, const Vector& Value)
-	//	{
-	//		LuaNewTable(State);
-	//		SetTableByName(State, -1, "x", Value.X);
-	//		SetTableByName(State, -1, "y", Value.Y);
-	//		SetTableByName(State, -1, "z", Value.Z);
-	//		SetTableByName(State, -1, "_ct", "FVector");
-
-	//		// set the metatable
-	//		LuaGetGlobal(State, "_ctype");
-	//		LuaSetMetatable(State, -2);
-	//	}
-	//};
-
 	template <>
 	struct TypeInfo<FName>
 	{
@@ -247,19 +209,6 @@ namespace TLua
 		}
 	};
 
-/*	template <typename Type>
-	struct TypeInfo<Type*>
-	{
-		inline static Type* GetValue(lua_State* state, int index)
-		{
-			return (Type*)LuaGetUserData(state, index);
-		}
-
-		inline static void PushValue(lua_State* state, const Type* ptr)
-		{
-			LuaPushUserData(state, (void*)ptr);
-		}
-	}*/;
 	template <>
 	struct TypeInfo<void*>
 	{
@@ -293,21 +242,6 @@ namespace TLua
 			return Result;
 		}
 	};
-
-	//template <>
-	//struct TypeInfo<UObject*>
-	//{
-	//	inline static UObject* GetValue(lua_State* state, int index)
-	//	{
-	//		return (UObject*)LuaGetUserData(state, index);
-	//	}
-
-	//	inline static void PushValue(lua_State* state, UObject* ptr)
-	//	{
-	//		LuaPushUserData(state, ptr);
-	//	}
-	//};
-
 
 	template <typename ValueType>
 	struct TypeInfo<TArray<ValueType>>
@@ -343,20 +277,6 @@ namespace TLua
 		}
 	};
 
-	//template <typename Type>
-	//struct TypeInfo<Type, std::void_t<decltype(TBaseStructure<Type>::Get())>>
-	//{
-	//	inline static Type GetValue(lua_State* State, int index)
-	//	{
-
-	//	}
-
-	//	inline static void PushValue(lua_State* State, const Type& Value)
-	//	{
-	//		LuaPushNil(State);
-	//	}
-	//};
-
 	// match the struct type
 	// only Struct type have the method StaticStruct
 	template <typename Type>
@@ -373,7 +293,6 @@ namespace TLua
 
 		inline static void PushValue(lua_State* State, const Type& Value)
 		{
-//			LuaPushNumber(State, 1314);
 			LuaNewTable(State);
 			SetTableByName(State, -1, "_ct", TBaseStructure<Type>::Get());
 			// iter the values
@@ -411,8 +330,6 @@ namespace TLua
 				}
 				else {
 					SetTableByName(State, -1, TmpName.c_str(), 3344);
-					// TLua::PushValue(State, 12345);
-					//TLua::LuaPushNil(State);
 				}
 			}
 
@@ -427,35 +344,14 @@ namespace TLua
 		}
 	};
 
-	//template <>
-	//struct TypeInfo<UActorComponent*>
-	//{
-	//	using Type = UActorComponent*;
-
-	//	inline static Type GetValue(lua_State* State, int Index)
-	//	{
-	//		return TLua::GetValue<Type>(State, Index);
-	//	}
-
-	//	inline static void PushValue(lua_State* State, const Type& Value)
-	//	{
-	//		LuaNewTable(State);
-	//		SetTableByName(State, -1, "_ct", (void*)Value->StaticClass());
-	//		SetTableByName(State, -1, "_co", (void*)Value);
-	//		LuaGetGlobal(State, "_lc");
-	//		LuaSetMetatable(State, -2);
-	//	}
-	//};
 
 	template <typename T>
-	//struct TypeInfo<T, void, std::enable_if_t<std::is_base_of_v<UActorComponent, std::remove_pointer_t<T>>>>
 	struct TypeInfo<T, void, 
 		std::void_t<std::enable_if_t<std::is_base_of_v<UActorComponent, std::remove_pointer_t<T>>>>>
 	{
 
 		inline static T GetValue(lua_State* State, int Index)
 		{
-//			return TLua::GetValue<T>(State, Index);
 			return nullptr;
 		}
 
@@ -477,7 +373,6 @@ namespace TLua
 
 		inline static Type GetValue(lua_State* State, int Index)
 		{
-//			return TLua::GetValue<Type>(State, Index);
 			return nullptr;
 		}
 
