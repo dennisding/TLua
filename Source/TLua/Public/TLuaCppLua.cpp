@@ -21,7 +21,7 @@ namespace TLua
 		virtual void PushValue(lua_State* State, void* Parameters) = 0;
 	};
 
-	template <typename PropertyType>
+	template <typename PropertyType, typename ValueType>
 	class ParameterType : public ParameterBase
 	{
 	public:
@@ -42,13 +42,33 @@ namespace TLua
 			Property->DestroyValue_InContainer(Container);
 		}
 
-		virtual void PushValue(lua_State* State, void* Parameters) override
-		{
-			using PropertyInfoType = PropertyInfo<PropertyType>;
+		//virtual void PushValue(lua_State* State, void* Parameters) override
+		//{
+		//	using PropertyInfoType = PropertyInfo<PropertyType>;
 
-			TLua::PushValue(State,
-				PropertyInfo<PropertyType>::GetValue(Parameters, Property));
+		//	TLua::PushValue(State,
+		//		PropertyInfo<PropertyType>::GetValue(Parameters, Property));
+		//}
+
+		void PushValue(lua_State* State, void* Object)
+		{
+			// 1. get value from UObject
+			// 2. push value to lua (by special type)
+			ValueType Value = (ValueType)Property->GetPropertyValue_InContainer(Object);
+			TLua::PushValue(State, Value);
 		}
+
+		//template <typename ObjectType>
+		//int CppObjectGetObject(lua_State* State)
+		//{
+		//	UObject* Object = (UObject*)lua_touserdata(State, 1);
+		//	FObjectProperty* Property = (FObjectProperty*)lua_touserdata(State, 2);
+
+		//	auto Ptr = Property->GetPropertyValue_InContainer(Object);
+		//	PushValue(State, Cast<ObjectType>(Ptr));
+
+		//	return 1;
+		//}
 
 	private:
 		PropertyType* Property;
@@ -65,17 +85,18 @@ namespace TLua
 		template <typename PropertyType> 
 		inline void Visit(PropertyType* Property)
 		{
-			Parameter = new ParameterType<PropertyType>(Property, Index);
+			using ValueType = typename PropertyInfo<PropertyType>::ValueType;
+			Parameter = new ParameterType<PropertyType, ValueType>(Property, Index);
 		}
 
 		void Visit(FObjectProperty* Property, UActorComponent*)
 		{
-			Parameter = new ParameterType<FObjectProperty>(Property, Index);
+			Parameter = new ParameterType<FObjectProperty, UActorComponent*>(Property, Index);
 		}
 
 		void Visit(FObjectProperty* Property, AActor*)
 		{
-			Parameter = new ParameterType<FObjectProperty>(Property, Index);
+			Parameter = new ParameterType<FObjectProperty, AActor*>(Property, Index);
 		}
 
 	public:
