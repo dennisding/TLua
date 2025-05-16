@@ -219,7 +219,11 @@ namespace TLua
 
 	void LuaCall(lua_State* State, int ArgNum, int ReturnNum)
 	{
-		lua_call(State, ArgNum, ReturnNum);
+		int Result = lua_pcall(State, ArgNum, ReturnNum, 0);
+		if (Result != LUA_OK) {
+			FString Msg(lua_tostring(State, -1));
+			UE_LOG(Lua, Error, TEXT("error in call lua code: %s"), *Msg);
+		}
 	}
 
 	void LuaPCall(lua_State* State, int ArgNum, int ReturnNum)

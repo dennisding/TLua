@@ -6,11 +6,11 @@
 #include <map>
 #include <type_traits>
 
-#include "TLua.hpp"
+//#include "TLua.hpp"
 #include "TLuaImp.hpp"
-#include "TLuaCall.hpp"
-#include "TLuaCppLua.hpp"
-#include "TLuaProperty.hpp"
+// #include "TLuaCall.hpp"
+//#include "TLuaCppLua.hpp"
+#include "TLuaUStructMgr.hpp"
 #include "Lua/lua.hpp"
 
 namespace TLua
@@ -295,53 +295,16 @@ namespace TLua
 		inline static void PushValue(lua_State* State, const Type& Value)
 		{
 			LuaNewTable(State);
-			SetTableByName(State, -1, "_ct", TBaseStructure<Type>::Get());
-			// iter the values
+			SetTableByName(State, -1, "_ct", (void*)TBaseStructure<Type>::Get());
+			// iter the property
+			PropertyArray* Properties = UStructMgr::Get<Type>();
 
-			UStruct* StructInfo = TBaseStructure<Type>::Get();
-			for (TFieldIterator<FProperty> It(StructInfo); It; ++It) {
-				FProperty* Property = *It;
-
-				FString NameString = Property->GetName();
-				FTCHARToUTF8 Convert(NameString);
-				const char* Name = (const char*)Convert.Get();
-
-				std::string TmpName(Convert.Get(), Convert.Length());
-
-				if (auto* IntProperty = CastField<FIntProperty>(Property))
-				{
-					SetTableByName(State, -1, TmpName.c_str(),
-						PropertyInfo<FIntProperty>::GetValue(&Value, IntProperty));
-				}
-				else if (auto* FloatProperty = CastField<FFloatProperty>(Property))
-				{
-					SetTableByName(State, -1, TmpName.c_str(),
-						PropertyInfo<FFloatProperty>::GetValue(&Value, FloatProperty));
-				}
-				else if (auto* DoubleProperty = CastField<FDoubleProperty>(Property)) 
-				{
-					SetTableByName(State, -1, TmpName.c_str(),
-						PropertyInfo<FDoubleProperty>::GetValue(&Value, DoubleProperty));
-				}
-				else if (auto* StrProperty = CastField<FStrProperty>(Property))
-				{
-					FString OutValue;
-					StrProperty->GetValue_InContainer(&Value, &OutValue);
-					SetTableByName(State, -1, TmpName.c_str(), OutValue);
-				}
-				else {
-					SetTableByName(State, -1, TmpName.c_str(), 3344);
-				}
+			for (PropertyBase* Property : *Properties) {
+				Property->SetField(State, -1, &Value);
 			}
 
-			// set the metatable
 			LuaGetGlobal(State, "_ls");
 			LuaSetMetatable(State, -2);
-		}
-
-		inline static void PushValue(lua_State* State, const Type* Value)
-		{
-			PushValue(State, *Value);
 		}
 	};
 
@@ -363,7 +326,7 @@ namespace TLua
 			LuaNewTable(State);
 			SetTableByName(State, -1, "_ct", (void*)Value->GetClass());
 			SetTableByName(State, -1, "_co", (void*)Value);
-			LuaGetGlobal(State, "_lc");
+			LuaGetGlobal(State, "_lc"); // lua component
 			LuaSetMetatable(State, -2);
 		}
 	};
@@ -387,11 +350,6 @@ namespace TLua
 			LuaGetGlobal(State, "_lua_get_obj");
 			LuaPushUserData(State, Value);
 			LuaPCall(State, 2, 1);
-			//LuaNewTable(State);
-			//SetTableByName(State, -1, "_ct", (void*)Value->GetClass());
-			//SetTableByName(State, -1, "_co", (void*)Value);
-			//LuaGetGlobal(State, "_la");
-			//LuaSetMetatable(State, -2);
 		}
 	};
 }

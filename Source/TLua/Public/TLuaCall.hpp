@@ -1,7 +1,5 @@
 #pragma once
 
-#define TLUA_TRACE_CALL_NAME "trace_call"
-
 #include "Lua/lua.hpp"
 #include "TLuaImp.hpp"
 #include "TLuaTypes.hpp"

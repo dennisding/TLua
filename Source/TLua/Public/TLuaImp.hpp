@@ -1,5 +1,9 @@
 #pragma once
 
+#include "Lua/lua.hpp"
+
+#define TLUA_TRACE_CALL_NAME "trace_call"
+
 namespace TLua
 {
 	TLua_API void Init();

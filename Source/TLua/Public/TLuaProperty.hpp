@@ -5,11 +5,15 @@
 #include "UObject/UObjectGlobals.h"
 
 #include "TLua.h"
+#include "TLuaTypes.hpp"
 
 namespace TLua
 {
 	template <typename Property>
 	struct PropertyInfo {};
+
+	template <typename Type>
+	inline void PushValue(lua_State* state, const Type& value);
 
 	template <>
 	struct PropertyInfo<FFloatProperty>
@@ -111,6 +115,10 @@ namespace TLua
 		else if (auto* FloatProperty = CastField<FFloatProperty>(Property))
 		{
 			Dispatcher.Visit(FloatProperty);
+		}
+		else if (auto* DoubleProperty = CastField<FDoubleProperty>(Property))
+		{
+			Dispatcher.Visit(DoubleProperty);
 		}
 		else if (auto* StrProperty = CastField<FStrProperty>(Property)) 
 		{

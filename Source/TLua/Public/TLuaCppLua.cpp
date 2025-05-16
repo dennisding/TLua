@@ -58,18 +58,6 @@ namespace TLua
 			TLua::PushValue(State, Value);
 		}
 
-		//template <typename ObjectType>
-		//int CppObjectGetObject(lua_State* State)
-		//{
-		//	UObject* Object = (UObject*)lua_touserdata(State, 1);
-		//	FObjectProperty* Property = (FObjectProperty*)lua_touserdata(State, 2);
-
-		//	auto Ptr = Property->GetPropertyValue_InContainer(Object);
-		//	PushValue(State, Cast<ObjectType>(Ptr));
-
-		//	return 1;
-		//}
-
 	private:
 		PropertyType* Property;
 		int LuaIndex;
