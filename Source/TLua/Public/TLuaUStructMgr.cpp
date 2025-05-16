@@ -16,17 +16,26 @@ namespace TLua
 		{
 		}
 
-		virtual void PushValue(lua_State* State, const void* Container) override
-		{
-			TLua::PushValue<ValueType>(State,
-				(ValueType)PropertyInfo<PropertyType>::GetValue(Container, Property));
-		}
+		//virtual void PushValue(lua_State* State, const void* Container) override
+		//{
+		//	TLua::PushValue<ValueType>(State,
+		//		(ValueType)PropertyInfo<PropertyType>::GetValue(Container, Property));
+		//}
 
 		virtual void SetField(lua_State* State, int Index, const void* Container) override
 		{
-			FString Name = Property->GetNameCPP();
-			SetTableByName(State, Index, (const char*)*Name,
+//			FString Name = Property->GetNameCPP();
+			SetTableByName(State, Index, (const char*)*Property->GetNameCPP() ,
 				(ValueType)PropertyInfo<PropertyType>::GetValue(Container, Property));
+		}
+
+		virtual void GetField(lua_State* State, int Index, void* Container) override
+		{
+//			PropertyInfo<PropertyType>::GetValue()
+			auto Value = GetTableByName<ValueType>(State, Index, 
+							(const char*)*Property->GetNameCPP());
+			
+			Property->SetPropertyValue_InContainer(Container, Value);
 		}
 
 	private:

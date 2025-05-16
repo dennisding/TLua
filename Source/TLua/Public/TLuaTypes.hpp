@@ -80,9 +80,15 @@ namespace TLua
 	template <typename Type>
 	inline Type PopValue(lua_State* state)
 	{
-		Type result = TypeInfo<Type>::GetValue(state, -1);
+		using RealType = decltype(AutoConverter(Type()));
+
+		RealType result = TypeInfo<RealType>::GetValue(state, -1);
 		LuaPop(state, 1);
-		return result;
+		return (RealType)result;
+
+		//Type result = TypeInfo<Type>::GetValue(state, -1);
+		//LuaPop(state, 1);
+		//return result;
 	}
 
 	// special type template
@@ -288,8 +294,19 @@ namespace TLua
 			return Type::StaticStrut();
 		}
 	public:
-		inline static Type GetValue(lua_State* State, int index)
+		inline static Type GetValue(lua_State* State, int Index)
 		{
+			Type Value;
+			if (!LuaIsTable(State, Index)) {
+				return Value;
+			}
+
+			PropertyArray* Properties = UStructMgr::Get<Type>();
+			for (PropertyBase* Property : *Properties) {
+				Property->GetField(State, Index, &Value);
+			}
+
+			return Value;
 		}
 
 		inline static void PushValue(lua_State* State, const Type& Value)
