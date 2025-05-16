@@ -9,7 +9,8 @@ namespace TLua
 	TLua_API bool CheckState(int r, lua_State* state);
 	TLua_API void RegisterCallbackImp(const char* name, void* processor, void* callback);
 	TLua_API void LuaGetGlobal(lua_State* state, const char* name);
-	TLua_API void LuaCall(lua_State* state, int arg_num, int return_num = 0);
+	TLua_API void LuaCall(lua_State* state, int ArgNum, int ReturnNum = 0);
+	TLua_API void LuaPCall(lua_State* State, int ArgNum, int ReturnNum = 0);
 	TLua_API int LuaGetTop(lua_State* state);
 	TLua_API void LuaError(lua_State* state, const char* msg);
 	TLua_API void LuaCheckStack(lua_State* State, int Num);

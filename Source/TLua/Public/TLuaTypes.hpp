@@ -8,6 +8,7 @@
 
 #include "TLua.hpp"
 #include "TLuaImp.hpp"
+#include "TLuaCall.hpp"
 #include "TLuaCppLua.hpp"
 #include "TLuaProperty.hpp"
 #include "Lua/lua.hpp"
@@ -378,11 +379,15 @@ namespace TLua
 
 		inline static void PushValue(lua_State* State, const Type& Value)
 		{
-			LuaNewTable(State);
-			SetTableByName(State, -1, "_ct", (void*)Value->GetClass());
-			SetTableByName(State, -1, "_co", (void*)Value);
-			LuaGetGlobal(State, "_la");
-			LuaSetMetatable(State, -2);
+			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
+			LuaGetGlobal(State, "_lua_get_obj");
+			LuaPushUserData(State, Value);
+			LuaPCall(State, 2, 1);
+			//LuaNewTable(State);
+			//SetTableByName(State, -1, "_ct", (void*)Value->GetClass());
+			//SetTableByName(State, -1, "_co", (void*)Value);
+			//LuaGetGlobal(State, "_la");
+			//LuaSetMetatable(State, -2);
 		}
 	};
 }

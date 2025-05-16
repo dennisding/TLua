@@ -222,6 +222,15 @@ namespace TLua
 		lua_call(State, ArgNum, ReturnNum);
 	}
 
+	void LuaPCall(lua_State* State, int ArgNum, int ReturnNum)
+	{
+		int Result = lua_pcall(State, ArgNum, ReturnNum, 0);
+		if (Result != LUA_OK) {
+			FString Msg(lua_tostring(State, -1));
+			UE_LOG(Lua, Error, TEXT("error in call lua code: %s"), *Msg);
+		}
+	}
+
 	int LuaGetTop(lua_State* state)
 	{
 		return lua_gettop(state);
