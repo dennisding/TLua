@@ -346,17 +346,19 @@ namespace TLua
 	};
 
 
-	template <typename T>
-	struct TypeInfo<T, void, 
-		std::void_t<std::enable_if_t<std::is_base_of_v<UActorComponent, std::remove_pointer_t<T>>>>>
+	template <typename Type>
+	struct TypeInfo<Type, void, 
+		std::void_t<std::enable_if_t<std::is_base_of_v<UActorComponent, std::remove_pointer_t<Type>>>>>
 	{
 
-		inline static T GetValue(lua_State* State, int Index)
+		inline static Type GetValue(lua_State* State, int Index)
 		{
-			return nullptr;
+			LuaGetField(State, Index, "_co");
+
+			return (Type)LuaGetUserData(State, Index);
 		}
 
-		inline static void PushValue(lua_State* State, const T& Value)
+		inline static void PushValue(lua_State* State, const Type& Value)
 		{
 			LuaNewTable(State);
 			SetTableByName(State, -1, "_ct", (void*)Value->GetClass());
@@ -374,7 +376,9 @@ namespace TLua
 
 		inline static Type GetValue(lua_State* State, int Index)
 		{
-			return nullptr;
+			LuaGetField(State, Index, "_co");
+
+			return (Type)LuaGetUserData(State, Index);
 		}
 
 		inline static void PushValue(lua_State* State, const Type& Value)

@@ -29,7 +29,7 @@ namespace TLua
 	}
 
 	template <typename R, typename ...Types>
-	inline R Call(const char* name, const Types&... args)
+	inline R RCall(const char* name, const Types&... args)
 	{
 		lua_State* state = GetLuaState();
 
