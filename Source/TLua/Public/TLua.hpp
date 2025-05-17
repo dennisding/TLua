@@ -9,3 +9,4 @@
 #include "TLuaCall.hpp"
 #include "TLuaProperty.hpp"
 #include "TLuaTypes.hpp"
+#include "TLuaScriptComponent.h"

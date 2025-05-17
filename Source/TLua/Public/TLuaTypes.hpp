@@ -31,6 +31,8 @@ namespace TLua
 
 	inline double AutoConverter(float value) { return 0.0; }
 
+	inline char* AutoConverter(const char *) { return nullptr; }
+
 	template <typename Type>
 	auto GetValue(lua_State* state, int index)
 	{

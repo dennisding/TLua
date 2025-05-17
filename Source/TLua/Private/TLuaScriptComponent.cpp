@@ -31,7 +31,7 @@ void UTLuaScriptComponent::OnRegister()
 	}
 
 	
-	TLua::Call("_lua_bind_obj", (void*)Actor, Actor->GetName());
+	TLua::Call("_lua_bind_obj", (void*)Actor);
 }
 void UTLuaScriptComponent::InitializeComponent()
 {
@@ -56,5 +56,6 @@ void UTLuaScriptComponent::OnUnregister()
 		return;
 	}
 
-	TLua::Call("_lua_silent_call_method", "_lua_unbind", (void*)Actor);
+	TLua::Call("_lua_unbind_obj", (void *)Actor);
+//	TLua::Call("_lua_silent_call_method", "_lua_unbind", (void*)Actor);
 }

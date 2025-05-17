@@ -317,6 +317,35 @@ namespace TLua
 		return 0;
 	}
 
+	// _lua_object_create(parent, name, type)
+	int CppObjectCreate(lua_State* State)
+	{
+		AActor* Actor = GetValue<AActor*>(State, 1);
+		FString Name = GetValue<FString>(State, 2);
+		FString Type = GetValue<FString>(State, 3);
+		// 通过类名查找
+		UClass* FoundClass = FindObject<UClass>(nullptr, *Type);
+		if (!FoundClass)
+		{
+			FoundClass = LoadObject<UClass>(nullptr, *Type);
+		}
+
+		if (!FoundClass) {
+			return 0;	// return nil
+		}
+
+		// create the component
+		if (FoundClass->IsChildOf(UActorComponent::StaticClass())) {
+			UActorComponent* Component = NewObject<UActorComponent>(Actor, FoundClass);
+			Component->RegisterComponent();
+			PushValue(State, Component);
+			return 1;
+		}
+
+
+		return 0;
+	}
+
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
@@ -327,5 +356,6 @@ namespace TLua
 		lua_register(State, "_cpp_object_get_type", CppObjectGetType);
 		lua_register(State, "_cpp_object_get_info", CppObjectGetInfo);
 		lua_register(State, "_cpp_object_call_fun", CppObjectCallFun);
+		lua_register(State, "_cpp_object_create", CppObjectCreate);
 	}
 }

@@ -2,6 +2,14 @@
 
 #pragma once
 
+#include "Lua/lua.hpp"
+#include "TLuaImp.hpp"
+#include "TLuaTypes.hpp"
+#include "TLuaCall.hpp"
+#include "TLuaProperty.hpp"
+
+#include "utility"
+
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "TLuaScriptComponent.generated.h"
@@ -16,6 +24,29 @@ public:
 	// Sets default values for this component's properties
 	UTLuaScriptComponent();
 
+	template <typename ...ArgTypes>
+	void Call(const char* Name, const ArgTypes&... Args)
+	{
+		AActor* Owner = GetOwner();
+		if (!Owner) {
+			return;
+		}
+
+//		TLua::Call("_lua_call", (void*)Owner, Name, std::forward<ArgTypes>(Args)...);
+		TLua::Call("_lua_call", (void*)Owner, Name, Args...);
+	}
+
+	template <typename ReturnType, typename ...ArgTypes>
+	ReturnType RCall(const char* Name, const ArgTypes&... Args)
+	{
+		AActor* Owner = GetOwner();
+		if (!Owner) {
+			return ReturnType();
+		}
+
+		return TLua::RCall("_lua_call", (void*)Owner, Name, Args...);
+	}
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -27,6 +58,4 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-		
 };
