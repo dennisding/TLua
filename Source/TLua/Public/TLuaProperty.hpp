@@ -142,6 +142,7 @@ namespace TLua
 			}
 			else 
 			{
+				UE_LOG(Lua, Warning, TEXT("unhandled ObjectProperty:%s"), *Property->GetName());
 			}
 		}
 		else {
