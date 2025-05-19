@@ -15,7 +15,7 @@ namespace TLua
 	class ParameterBase
 	{
 	public:
-		virtual void SetParameter(void* Params, lua_State* State) = 0;
+		virtual bool SetParameter(void* Params, lua_State* State) = 0;
 		virtual void DestroyValue_InContainer(void *Container) = 0;
 		// push to state
 		virtual void PushValue(lua_State* State, void* Parameters) = 0;
@@ -26,20 +26,47 @@ namespace TLua
 	{
 	public:
 		ParameterType(PropertyType* InProperty, int InLuaIndex)
-			: Property(InProperty), LuaIndex(InLuaIndex)
+			: Property(InProperty), LuaIndex(InLuaIndex),
+			HasDefaultValue(false), DefaultValue(ValueType()), IsSetted(false)
 		{
+			if (Property->HasAnyPropertyFlags(CPF_Parm) &&
+				!Property->HasAnyPropertyFlags(CPF_OutParm))
+			{
+				if (Property->HasMetaData("CPP_DefaultValue")) {
+					HasDefaultValue = true;
+					DefaultValue = (ValueType)PropertyInfo<PropertyType>::GetDefault(Property);
+				}
+			}
 		}
 
-		virtual void SetParameter(void* Parameters, lua_State* State) override
+		virtual ~ParameterType() {}
+
+		virtual bool SetParameter(void* Parameters, lua_State* State) override
 		{
 			using PropertyInfoType = PropertyInfo<PropertyType>;
+
+			if (LuaGetTop(State) < LuaIndex) { // not enough parameter
+				if (HasDefaultValue) {
+					PropertyInfoType::SetValue(Parameters, Property, DefaultValue);
+					IsSetted = true;
+					return true;
+				}
+				IsSetted = false;
+				return false;
+			}
+
 			PropertyInfoType::SetValue(Parameters, Property,
 				GetValue<typename PropertyInfoType::ValueType>(State, LuaIndex));
+
+			IsSetted = true;
+			return true;
 		}
 
 		virtual void DestroyValue_InContainer(void* Container) override
 		{
-			Property->DestroyValue_InContainer(Container);
+			if (IsSetted) {
+				Property->DestroyValue_InContainer(Container);
+			}
 		}
 
 		//virtual void PushValue(lua_State* State, void* Parameters) override
@@ -61,6 +88,9 @@ namespace TLua
 	private:
 		PropertyType* Property;
 		int LuaIndex;
+		bool HasDefaultValue;
+		ValueType DefaultValue;
+		bool IsSetted;
 	};
 
 	class ParameterVisitor
@@ -104,19 +134,29 @@ namespace TLua
 		int Call(lua_State* State, UObject* Object)
 		{
 			// check the parameter size
-			int Top = lua_gettop(State);
-			if (Top != Parameters.Num() + 2) {	// self, context, args...
-				UE_LOG(Lua, Error, TEXT("invalid argument number, %s, %d"), *Function->GetName(), Function->NumParms);
-				return 0;
-			}
+			// int Top = lua_gettop(State);
+			//if (Top != Parameters.Num() + 2) {	// self, context, args...
+			//	UE_LOG(Lua, Error, TEXT("invalid argument number, %s, %d"), *Function->GetName(), Function->NumParms);
+			//	return 0;
+			//}
 
 			void* ParameterMemory = (void*)FMemory_Alloca(Function->ParmsSize);
 			FMemory::Memzero(ParameterMemory, Function->ParmsSize);
 
 			// set the parameter
+			bool ValidParameter = true;
 			for (ParameterBase* Parameter : Parameters) {
-				Parameter->SetParameter(ParameterMemory, State);
+				ValidParameter = ValidParameter && Parameter->SetParameter(ParameterMemory, State);
 			}
+
+			if (!ValidParameter) {
+				// free the parameter
+				for (ParameterBase* Parameter : Parameters) {
+					Parameter->DestroyValue_InContainer(ParameterMemory);
+				}
+				return 0;
+			}
+
 				
 			Object->ProcessEvent(Function, ParameterMemory);
 
@@ -346,6 +386,64 @@ namespace TLua
 		return 0;
 	}
 
+	// _cpp_enum_get_type_name(ctype)
+	static int CppEnumGetTypeName(lua_State* State)
+	{
+		UEnum* Type = (UEnum*)lua_touserdata(State, 1);
+
+		PushValue(State, TCHAR_TO_ANSI(*Type->GetName()));
+
+		return 1;
+	}
+
+	// _cpp_enum_get_type(name)
+	static int CppEnumGetType(lua_State* State)
+	{
+		const char* AnsiName = (const char*)lua_tostring(State, 1);
+
+		FString Name(AnsiName);
+		UEnum* Type = FindObject<UEnum>(ANY_PACKAGE, *Name);
+
+		if (Type) {
+			lua_pushlightuserdata(State, Type);
+		}
+		else {
+			lua_pushnil(State);
+		}
+
+		return 1;
+	}
+
+	// _cpp_enum_get_value(ctype, name)
+	static int CppEnumGetValue(lua_State* State)
+	{
+		UEnum* Type = (UEnum*)lua_touserdata(State, 1);
+		const char* AnsiName = (const char*)lua_tostring(State, 2);
+
+		FName Name(AnsiName);
+		int64 Value = Type->GetValueByName(Name);
+		lua_pushnumber(State, Value);
+
+		return 1;
+		//// 名称 -> 值
+		//int64 Value = EnumDef->GetValueByNameString("Red");
+
+		//// 值 -> 名称
+		//FString Name = EnumDef->GetNameStringByValue(2);
+	}
+
+	// _cpp_enum_get_name(ctype, value)
+	static int CppEnumGetName(lua_State* State)
+	{
+		UEnum* Type = (UEnum*)lua_touserdata(State, 1);
+		int Value = lua_tointeger(State, 2);
+
+		FString Name = Type->GetNameStringByValue(Value);
+		// convert to ansi
+		PushValue(State, TCHAR_TO_ANSI(*Name));
+		return 1;
+	}
+
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
@@ -357,5 +455,11 @@ namespace TLua
 		lua_register(State, "_cpp_object_get_info", CppObjectGetInfo);
 		lua_register(State, "_cpp_object_call_fun", CppObjectCallFun);
 		lua_register(State, "_cpp_object_create", CppObjectCreate);
+
+		// enum
+		lua_register(State, "_cpp_enum_get_type_name", CppEnumGetTypeName);
+		lua_register(State, "_cpp_enum_get_type", CppEnumGetType);
+		lua_register(State, "_cpp_enum_get_value", CppEnumGetValue);
+		lua_register(State, "_cpp_enum_get_name", CppEnumGetName);
 	}
 }

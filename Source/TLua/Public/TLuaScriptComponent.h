@@ -32,7 +32,6 @@ public:
 			return;
 		}
 
-//		TLua::Call("_lua_call", (void*)Owner, Name, std::forward<ArgTypes>(Args)...);
 		TLua::Call("_lua_call", (void*)Owner, Name, Args...);
 	}
 
@@ -44,7 +43,7 @@ public:
 			return ReturnType();
 		}
 
-		return TLua::RCall("_lua_call", (void*)Owner, Name, Args...);
+		return TLua::RCall<ReturnType>("_lua_call", (void*)Owner, Name, Args...);
 	}
 
 protected:

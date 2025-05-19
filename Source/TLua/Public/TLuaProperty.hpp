@@ -28,6 +28,11 @@ namespace TLua
 		{
 			Property->SetValue_InContainer(Obj, Value);
 		}
+
+		static ValueType GetDefault(FFloatProperty* Property) 
+		{
+			return FCString::Atof(*Property->GetMetaData("CPP_DefaultValue"));
+		}
 	};
 
 	template <>
@@ -42,6 +47,11 @@ namespace TLua
 		static void SetValue(void* Obj, FDoubleProperty* Property, ValueType Value)
 		{
 			Property->SetValue_InContainer(Obj, Value);
+		}
+
+		static ValueType GetDefault(FDoubleProperty* Property)
+		{
+			return FCString::Atod(*Property->GetMetaData("CPP_DefaultValue"));
 		}
 	};
 
@@ -58,6 +68,11 @@ namespace TLua
 		{
 			Property->SetValue_InContainer(Obj, value);
 		}
+
+		static ValueType GetDefault(FIntProperty* Property)
+		{
+			return FCString::Atoi(*Property->GetMetaData("CPP_DefaultValue"));
+		}
 	};
 
 	template <>
@@ -72,6 +87,11 @@ namespace TLua
 		static void SetValue(void* Obj, FBoolProperty* Property, ValueType Value)
 		{
 			Property->SetPropertyValue_InContainer(Obj, (bool)Value);
+		}
+
+		static ValueType GetDefault(FBoolProperty* Property)
+		{
+			return Property->GetMetaData("CPP_DefaultValue").ToBool();
 		}
 	};
 
@@ -88,6 +108,31 @@ namespace TLua
 		{
 			Property->SetValue_InContainer(Obj, Value);
 		}
+
+		static ValueType GetDefault(FStrProperty* Property)
+		{
+			return Property->GetMetaData("CPP_DefaultValue");
+		}
+	};
+
+	template <>
+	struct PropertyInfo<FNameProperty>
+	{
+		using ValueType = FName;
+		static const FName& GetValue(const void* Obj, FNameProperty* Property)
+		{
+			return *(Property->GetPropertyValuePtr_InContainer(Obj));
+		}
+
+		static void SetValue(void* Obj, FNameProperty* Property, const FName& Value)
+		{
+			Property->SetValue_InContainer(Obj, Value);
+		}
+
+		static ValueType GetDefault(FNameProperty* Property)
+		{
+			return FName(*Property->GetMetaData("CPP_DefaultValue"));
+		}
 	};
 
 	template <>
@@ -102,6 +147,11 @@ namespace TLua
 		static void SetValue(void* Obj, FObjectProperty* Property, const ValueType& Value)
 		{
 			Property->SetObjectPropertyValue_InContainer(Obj, Value);
+		}
+
+		static ValueType GetDefault(FObjectProperty* Property)
+		{
+			return nullptr;
 		}
 	};
 
@@ -124,10 +174,14 @@ namespace TLua
 		{
 			Dispatcher.Visit(StrProperty);
 		}
-		else if (auto* BoolProperty = CastField<FBoolProperty >(Property))
+		else if (auto* BoolProperty = CastField<FBoolProperty>(Property))
 		{
 			Dispatcher.Visit(BoolProperty);
 
+		}
+		else if (auto* NameProperty = CastField<FNameProperty>(Property))
+		{
+			Dispatcher.Visit(NameProperty);
 		}
 		else if (auto* ObjectProperty = CastField<FObjectProperty>(Property))
 		{
@@ -142,11 +196,11 @@ namespace TLua
 			}
 			else 
 			{
-				UE_LOG(Lua, Warning, TEXT("unhandled ObjectProperty:%s"), *Property->GetName());
+				UE_LOG(Lua, Error, TEXT("unhandled ObjectProperty:%s"), *Property->GetName());
 			}
 		}
 		else {
-			UE_LOG(Lua, Warning, TEXT("unhandled attribute:%s"), *Property->GetName());
+			UE_LOG(Lua, Error, TEXT("unhandled attribute:%s"), *Property->GetName());
 		}
 	}
 }

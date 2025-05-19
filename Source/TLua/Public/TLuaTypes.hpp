@@ -19,7 +19,7 @@ namespace TLua
 	inline Type PopValue(lua_State* state);
 
 	// <Type, is_struct, is_actorcomponent, is_actor>
-	template <typename Type, typename = void, typename = void, typename = void>
+	template <typename Type, typename = void, typename = void, typename = void, typename = void>
 	struct TypeInfo {};
 
 	// auto convert
@@ -206,9 +206,8 @@ namespace TLua
 		{
 			size_t Size = 0;
 			const TCHAR* Buff = (const TCHAR*)LuaGetLString(State, Index, Size);
-			FName Name(Size/sizeof(TCHAR), Buff);
 
-			return Name;
+			return FName(Size / sizeof(TCHAR), Buff);
 		}
 
 		inline static void PushValue(lua_State* State, const FName& Name)
@@ -286,6 +285,32 @@ namespace TLua
 		}
 	};
 
+	template <typename Type>
+	struct TypeInfo<Type, std::enable_if_t<std::is_enum_v<Type>, void>>
+	{
+		inline static Type GetValue(lua_State* State, int Index)
+		{
+			int Value = 0;
+			if (LuaIsTable(State, Index)) {
+				Value = GetTableByName<int>(State, Index, "_v");
+			}
+			else {
+				Value = LuaGetInteger(State, Index);
+			}
+
+			return (Type)Value;
+		}
+
+		inline static void PushValue(lua_State* State, const Type& Value)
+		{
+			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
+			LuaGetGlobal(State, "_lua_get_enum");
+			LuaPushUserData(State, (void*)StaticEnum<Type>());
+			LuaPushInteger(State, (int)Value);
+			LuaPCall(State, 3, 1);
+		}
+	};
+
 	// match the struct type
 	// only Struct type have the method StaticStruct
 	template <typename Type>
@@ -329,7 +354,7 @@ namespace TLua
 
 
 	template <typename Type>
-	struct TypeInfo<Type, void, 
+	struct TypeInfo<Type, void, void,
 		std::void_t<std::enable_if_t<std::is_base_of_v<UActorComponent, std::remove_pointer_t<Type>>>>>
 	{
 
@@ -352,15 +377,17 @@ namespace TLua
 
 	// Actor and it's child class
 	template <typename Type>
-	struct TypeInfo<Type, void,
+	struct TypeInfo<Type, void, void,
 		std::void_t<std::enable_if_t<std::is_base_of_v<AActor, std::remove_pointer_t<Type>>>>>
 	{
 
 		inline static Type GetValue(lua_State* State, int Index)
 		{
 			LuaGetField(State, Index, "_co");
+			void* Result = LuaGetUserData(State, -1);
+			LuaPop(State, 1);
 
-			return (Type)LuaGetUserData(State, Index);
+			return (Type)Result;
 		}
 
 		inline static void PushValue(lua_State* State, const Type& Value)
