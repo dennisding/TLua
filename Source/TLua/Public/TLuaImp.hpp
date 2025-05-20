@@ -38,11 +38,14 @@ namespace TLua
 
 	TLua_API void LuaNewTable(lua_State* state);
 	TLua_API void LuaSetTable(lua_State* state, int index);
+	TLua_API void LuaSetField(lua_State* State, int Index, const char* Key);
+	TLua_API void LuaSetI(lua_State* State, int Index, lua_Integer N);
+	TLua_API void LuaGetI(lua_State* State, int Index, lua_Integer N);
 	TLua_API void LuaGetTable(lua_State* state, int index);
 	TLua_API void LuaLen(lua_State* state, int index);
 	TLua_API int LuaNext(lua_State* state, int index);
 
-	TLua_API void LuaPop(lua_State* state, int num);
+	TLua_API void LuaPop(lua_State* State, int Num = 1);
 	TLua_API int LuaAbsIndex(lua_State* state, int index);
 
 	TLua_API void LuaPushCppType(lua_State* State, int CppType);

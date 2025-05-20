@@ -12,34 +12,58 @@ namespace TLua
 	{
 	public:
 		TPropertyType(PropertyType* InProperty)
-			: Property(InProperty)
+			: Property(InProperty), AnsiName(TCHAR_TO_ANSI(*InProperty->GetName()))
 		{
 		}
 
-		//virtual void PushValue(lua_State* State, const void* Container) override
-		//{
-		//	TLua::PushValue<ValueType>(State,
-		//		(ValueType)PropertyInfo<PropertyType>::GetValue(Container, Property));
-		//}
-
-		virtual void SetField(lua_State* State, int Index, const void* Container) override
+		virtual void SetLuaField(lua_State* State, int Index, const void* Container) override
 		{
-//			FString Name = Property->GetNameCPP();
-			SetTableByName(State, Index, (const char*)*Property->GetNameCPP() ,
+			SetTableByName(State, Index, AnsiName.c_str(),
 				(ValueType)PropertyInfo<PropertyType>::GetValue(Container, Property));
 		}
 
-		virtual void GetField(lua_State* State, int Index, void* Container) override
+		virtual void GetLuaField(lua_State* State, int Index, void* Container) override
 		{
-//			PropertyInfo<PropertyType>::GetValue()
 			auto Value = GetTableByName<ValueType>(State, Index, 
-							(const char*)*Property->GetNameCPP());
+				AnsiName.c_str());
+							//(const char*)*Property->GetNameCPP());
 			
-			Property->SetPropertyValue_InContainer(Container, Value);
+			PropertyInfo<PropertyType>::SetValue(Container, Property, Value);
 		}
 
 	private:
 		PropertyType* Property;
+		std::string AnsiName;
+	};
+
+	class StructPropertyType : public PropertyBase
+	{
+	public:
+		StructPropertyType(FStructProperty* InProperty) : Property(InProperty)
+		{ 
+			Properties = UStructMgr::Get(Property->Struct);
+		}
+
+		virtual void SetLuaField(lua_State* State, int Index, const void* Container) override
+		{
+			const void* ValuePtr = Property->ContainerPtrToValuePtr<const void*>(Container);
+
+			for (PropertyBase* ChildProperty : *Properties) {
+				ChildProperty->SetLuaField(State, Index, ValuePtr);
+			}
+		}
+
+		virtual void GetLuaField(lua_State* State, int Index, void* Container) override
+		{
+			void* ValuePtr = Property->ContainerPtrToValuePtr<void*>(Container);
+			for (PropertyBase* ChildProperty : *Properties) {
+				ChildProperty->GetLuaField(State, Index, ValuePtr);
+			}
+		}
+
+	private:
+		PropertyArray* Properties;
+		FStructProperty* Property;
 	};
 
 	class PropertyVisitor
@@ -54,6 +78,11 @@ namespace TLua
 		{
 			using ValueType = PropertyInfo<PropertyType>::ValueType;
 			Properties->Add(new TPropertyType<PropertyType, ValueType>(Property));
+		}
+
+		void Visit(FStructProperty* Property)
+		{
+			Properties->Add(new StructPropertyType(Property));
 		}
 
 		template <typename ValueType>

@@ -51,8 +51,8 @@ namespace TLua
 
 	static int LuaCppLog(lua_State* state)
 	{
-		int level = TypeInfo<int>::GetValue(state, 1);
-		FString msg = TypeInfo<FString>::GetValue(state, 2);
+		int level = TypeInfo<int>::FromLua(state, 1);
+		FString msg = TypeInfo<FString>::FromLua(state, 2);
 
 		CppLog(level, msg);
 
@@ -81,7 +81,7 @@ namespace TLua
 
 	static int CppReadFile(lua_State* state)
 	{
-		auto path = TypeInfo<FString>::GetValue(state, 1);
+		auto path = TypeInfo<FString>::FromLua(state, 1);
 		TArray<uint8> content;
 
 		if (FFileHelper::LoadFileToArray(content, *path, FILEREAD_Silent)){
@@ -108,7 +108,7 @@ namespace TLua
 
 	static int CppUTF16_TO_UTF8(lua_State* state)
 	{
-		FString name = TypeInfo<FString>::GetValue(state, 1);
+		FString name = TypeInfo<FString>::FromLua(state, 1);
 		FTCHARToUTF8 converter(name);
 		lua_pushlstring(state, (const char*)converter.Get(), converter.Length());
 		return 1;
@@ -290,6 +290,16 @@ namespace TLua
 	void LuaSetTable(lua_State* state, int index)
 	{
 		lua_settable(state, index);
+	}
+
+	void LuaSetField(lua_State* State, int Index, const char* Key)
+	{
+		lua_setfield(State, Index, Key);
+	}
+
+	void LuaSetI(lua_State* State, int Index, lua_Integer N)
+	{
+		lua_seti(State, Index, N);
 	}
 
 	void LuaGetTable(lua_State* state, int index)

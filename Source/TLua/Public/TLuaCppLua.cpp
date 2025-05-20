@@ -15,7 +15,7 @@ namespace TLua
 	class ParameterBase
 	{
 	public:
-		virtual bool SetParameter(void* Params, lua_State* State) = 0;
+		virtual bool SetParameter(void* Params, lua_State* State, int Index) = 0;
 		virtual void DestroyValue_InContainer(void *Container) = 0;
 		// push to state
 		virtual void PushValue(lua_State* State, void* Parameters) = 0;
@@ -25,8 +25,8 @@ namespace TLua
 	class ParameterType : public ParameterBase
 	{
 	public:
-		ParameterType(PropertyType* InProperty, int InLuaIndex)
-			: Property(InProperty), LuaIndex(InLuaIndex),
+		ParameterType(PropertyType* InProperty)
+			: Property(InProperty),
 			HasDefaultValue(false), DefaultValue(ValueType()), IsSetted(false)
 		{
 			if (Property->HasAnyPropertyFlags(CPF_Parm) &&
@@ -41,11 +41,11 @@ namespace TLua
 
 		virtual ~ParameterType() {}
 
-		virtual bool SetParameter(void* Parameters, lua_State* State) override
+		virtual bool SetParameter(void* Parameters, lua_State* State, int Index) override
 		{
 			using PropertyInfoType = PropertyInfo<PropertyType>;
 
-			if (LuaGetTop(State) < LuaIndex) { // not enough parameter
+			if (LuaGetTop(State) < Index) { // not enough parameter
 				if (HasDefaultValue) {
 					PropertyInfoType::SetValue(Parameters, Property, DefaultValue);
 					IsSetted = true;
@@ -56,7 +56,7 @@ namespace TLua
 			}
 
 			PropertyInfoType::SetValue(Parameters, Property,
-				GetValue<typename PropertyInfoType::ValueType>(State, LuaIndex));
+				GetValue<typename PropertyInfoType::ValueType>(State, Index));
 
 			IsSetted = true;
 			return true;
@@ -66,37 +66,75 @@ namespace TLua
 		{
 			if (IsSetted) {
 				Property->DestroyValue_InContainer(Container);
+				IsSetted = true;
 			}
 		}
 
-		//virtual void PushValue(lua_State* State, void* Parameters) override
-		//{
-		//	using PropertyInfoType = PropertyInfo<PropertyType>;
-
-		//	TLua::PushValue(State,
-		//		PropertyInfo<PropertyType>::GetValue(Parameters, Property));
-		//}
-
-		void PushValue(lua_State* State, void* Object)
+		void PushValue(lua_State* State, void* Object) override
 		{
 			// 1. get value from UObject
 			// 2. push value to lua (by special type)
-			ValueType Value = (ValueType)Property->GetPropertyValue_InContainer(Object);
+			//ValueType Value = (ValueType)Property->GetPropertyValue_InContainer(Object);
+			ValueType Value = (ValueType)PropertyInfo<PropertyType>::GetValue(Object, Property);
 			TLua::PushValue(State, Value);
 		}
 
 	private:
 		PropertyType* Property;
-		int LuaIndex;
 		bool HasDefaultValue;
 		ValueType DefaultValue;
 		bool IsSetted;
 	};
 
+	// to do: process the default value
+	class ParameterStructType : public ParameterBase
+	{
+	public:
+		ParameterStructType(FStructProperty* InProperty) : Property(InProperty)
+		{
+			Properties = UStructMgr::Get(Property->Struct);
+		}
+
+		virtual bool SetParameter(void* Parameters, lua_State* State, int Index) override
+		{
+			for (PropertyBase* ChildProperty : *Properties) {
+				ChildProperty->GetLuaField(State, Index, Parameters);
+			}
+
+			return true;
+		}
+		virtual void DestroyValue_InContainer(void* Container) override
+		{
+			Property->DestroyValue_InContainer(Container);
+		}
+		// push to state
+		virtual void PushValue(lua_State* State, void* Parameters) override
+		{
+			// LuaPushNil(State);
+			void* ValuePtr = Property->ContainerPtrToValuePtr<void*>(Parameters);
+
+			LuaNewTable(State);
+			TypeInfo<void*>::ToLua(State, Property->Struct);
+			LuaSetField(State, -2, "_ct");
+//			SetTableByName(State, -1, "_ct", (void*)Property->Struct);
+			// iter the property
+			for (PropertyBase* ChildProperty : *Properties) {
+//				Property->SetField(State, -1, &Value);
+				ChildProperty->SetLuaField(State, -1, ValuePtr);
+			}
+
+			LuaGetGlobal(State, "_ls");
+			LuaSetMetatable(State, -2);
+		}
+	private:
+		FStructProperty* Property;
+		PropertyArray* Properties;
+	};
+
 	class ParameterVisitor
 	{
 	public:
-		ParameterVisitor(int InIndex = -1) : Index(InIndex), Parameter(nullptr)
+		ParameterVisitor() : Parameter(nullptr)
 		{
 		}
 		
@@ -104,21 +142,25 @@ namespace TLua
 		inline void Visit(PropertyType* Property)
 		{
 			using ValueType = typename PropertyInfo<PropertyType>::ValueType;
-			Parameter = new ParameterType<PropertyType, ValueType>(Property, Index);
+			Parameter = new ParameterType<PropertyType, ValueType>(Property);
+		}
+
+		void Visit(FStructProperty* Property)
+		{
+
 		}
 
 		void Visit(FObjectProperty* Property, UActorComponent*)
 		{
-			Parameter = new ParameterType<FObjectProperty, UActorComponent*>(Property, Index);
+			Parameter = new ParameterType<FObjectProperty, UActorComponent*>(Property);
 		}
 
 		void Visit(FObjectProperty* Property, AActor*)
 		{
-			Parameter = new ParameterType<FObjectProperty, AActor*>(Property, Index);
+			Parameter = new ParameterType<FObjectProperty, AActor*>(Property);
 		}
 
 	public:
-		int Index;
 		ParameterBase* Parameter;
 	};
 
@@ -133,26 +175,24 @@ namespace TLua
 
 		int Call(lua_State* State, UObject* Object)
 		{
-			// check the parameter size
-			// int Top = lua_gettop(State);
-			//if (Top != Parameters.Num() + 2) {	// self, context, args...
-			//	UE_LOG(Lua, Error, TEXT("invalid argument number, %s, %d"), *Function->GetName(), Function->NumParms);
-			//	return 0;
-			//}
-
 			void* ParameterMemory = (void*)FMemory_Alloca(Function->ParmsSize);
 			FMemory::Memzero(ParameterMemory, Function->ParmsSize);
 
 			// set the parameter
 			bool ValidParameter = true;
-			for (ParameterBase* Parameter : Parameters) {
-				ValidParameter = ValidParameter && Parameter->SetParameter(ParameterMemory, State);
+			// for (ParameterBase* Parameter : Parameters) {
+			// start from 3, _cpp_boject_call_fun(self, fun_context, args...)
+			for (int Index = 3; Index <= Parameters.Num(); ++Index) {
+				ParameterBase* Parameter = Parameters[Index];
+				ValidParameter = 
+					ValidParameter && Parameter->SetParameter(ParameterMemory, State, Index);
 			}
 
 			if (!ValidParameter) {
 				// free the parameter
 				for (ParameterBase* Parameter : Parameters) {
 					Parameter->DestroyValue_InContainer(ParameterMemory);
+					UE_LOG(Lua, Error, TEXT("Invalid Set Parameter"));
 				}
 				return 0;
 			}
@@ -178,16 +218,15 @@ namespace TLua
 	private:
 		void ProcessParameter()
 		{
-			int Index = 2;	// start from 2, // lua_call(self, context, args...)
+			// start from 2, // lua_call(self, context, args...)
 			for (TFieldIterator<FProperty> It(Function); It; ++It) {
 				FProperty* Property = *It;
-				Index += 1;
-
+			
 				if (Property->HasAnyPropertyFlags(CPF_ReturnParm)) {
 					continue;
 				}
 
-				ParameterVisitor Visitor(Index);
+				ParameterVisitor Visitor;
 				DispatchProperty(Property, Visitor);
 
 				Parameters.Add(Visitor.Parameter);
@@ -295,6 +334,20 @@ namespace TLua
 		return 0;
 	}
 
+	// _call(self, property)
+	int CppObjectGetStruct(lua_State* State)
+	{
+		UObject* Self = (UObject*)lua_touserdata(State, 1);
+		FStructProperty* Property = (FStructProperty*)lua_touserdata(State, 1);
+		return 0;
+	}
+
+	// _call(self, property, value)
+	int CppObjectSetStruct(lua_State* State)
+	{
+		return 0;
+	}
+
 	struct ObjectPropertyVisitor
 	{
 		ObjectPropertyVisitor(lua_State* InState) : State(InState)
@@ -307,6 +360,13 @@ namespace TLua
 			lua_pushlightuserdata(State, Property);
 			lua_pushcfunction(State, &CppObjectGetAttr<PropertyType>);
 			lua_pushcfunction(State, &CppObjectSetAttr<PropertyType>);
+		}
+
+		void Visit(FStructProperty* Property)
+		{
+			lua_pushlightuserdata(State, Property);
+			lua_pushcfunction(State, &CppObjectGetStruct);
+			lua_pushcfunction(State, &CppObjectSetStruct);
 		}
 
 		void Visit(FObjectProperty* Property, UActorComponent* = nullptr)
@@ -363,7 +423,6 @@ namespace TLua
 		AActor* Actor = GetValue<AActor*>(State, 1);
 		FString Name = GetValue<FString>(State, 2);
 		FString Type = GetValue<FString>(State, 3);
-		// 通过类名查找
 		UClass* FoundClass = FindObject<UClass>(nullptr, *Type);
 		if (!FoundClass)
 		{
@@ -425,11 +484,6 @@ namespace TLua
 		lua_pushnumber(State, Value);
 
 		return 1;
-		//// 名称 -> 值
-		//int64 Value = EnumDef->GetValueByNameString("Red");
-
-		//// 值 -> 名称
-		//FString Name = EnumDef->GetNameStringByValue(2);
 	}
 
 	// _cpp_enum_get_name(ctype, value)

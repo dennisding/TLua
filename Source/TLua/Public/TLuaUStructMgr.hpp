@@ -11,8 +11,8 @@ namespace TLua {
 	{
 	public:
 		// virtual void PushValue(lua_State* State, const void* Container) = 0;
-		virtual void SetField(lua_State* State, int Index, const void* Container) = 0;
-		virtual void GetField(lua_State* State, int Index, void* Container) = 0;
+		virtual void SetLuaField(lua_State* State, int Index, const void* Container) = 0;
+		virtual void GetLuaField(lua_State* State, int Index, void* Container) = 0;
 	};
 
 	using PropertyArray = TArray<PropertyBase*>;
