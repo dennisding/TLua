@@ -7,6 +7,5 @@
 
 namespace TLua
 {
-
 	void RegisterCppLua();
 }

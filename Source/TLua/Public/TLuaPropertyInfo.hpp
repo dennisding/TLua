@@ -99,12 +99,6 @@ namespace TLua
 		using ValueType = UObject*;
 	};
 
-	//template <>
-	//struct PropertyInfo<FObjectPtrProperty>
-	//{
-	//	using ValueType = FObjectPtr;
-	//};
-
 	template <>
 	struct PropertyInfo<FSoftObjectProperty>
 	{

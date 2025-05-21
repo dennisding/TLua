@@ -131,7 +131,6 @@ namespace TLua
 		inline static void FromLua(lua_State* State, int Index, const char*& OutValue)
 		{
 			OutValue = LuaGetString(State, Index);
-			//			return LuaGetString(state, index);
 		}
 
 		inline static const char* FromLua(lua_State* State, int Index)
