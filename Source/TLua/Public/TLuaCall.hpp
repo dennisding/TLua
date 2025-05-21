@@ -105,7 +105,7 @@ namespace TLua
 	};
 
 	template <typename ...Types>
-	int Processor(lua_State* state)
+	int FunProcessor(lua_State* state)
 	{
 		using FunType = void(*)(Types... args);
 		FunType fun = TypeInfo<FunType>::GetValue(state, 2);
@@ -116,7 +116,7 @@ namespace TLua
 	}
 
 	template <typename ReturnType, typename ...Types>
-	int ProcessorWithReturn(lua_State* state)
+	int FunProcessorWithReturn(lua_State* state)
 	{
 		using FunType = ReturnType(*)(Types... args);
 		FunType fun = TypeInfo<FunType>::GetValue(state, 2);
@@ -130,14 +130,14 @@ namespace TLua
 	template <typename R, typename ...Args>
 	LuaCFun GetProcessor(R(*callback)(Args...args))
 	{
-		return &ProcessorWithReturn<R, Args...>;
+		return &FunProcessorWithReturn<R, Args...>;
 	}
 
 	template <typename ...Args>
 	LuaCFun GetProcessor(void(*callback)(Args...args))
 	{
 		// no return value
-		return &Processor<Args...>;
+		return &FunProcessor<Args...>;
 	}
 
 	template <typename R, typename ...Args>

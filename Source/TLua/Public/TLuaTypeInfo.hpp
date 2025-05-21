@@ -3,6 +3,8 @@
 #include "Lua/lua.hpp"
 #include "TLuaImp.hpp"
 
+#include "TLuaUStructMgr.hpp"
+
 namespace TLua
 {
 	// <Type, is_struct, is_actorcomponent, is_actor>
@@ -324,16 +326,12 @@ namespace TLua
 			LuaPCall(State, 3, 1);
 		}
 	};
-
+	
 	// match the struct type
 	// only Struct type have the method StaticStruct
 	template <typename Type>
 	struct TypeInfo<Type, std::void_t<decltype(TBaseStructure<Type>::Get())>>
 	{
-		UStruct* GetStaticStruct()
-		{
-			return Type::StaticStrut();
-		}
 	public:
 		inline static void FromLua(lua_State* State, int Index, Type& OutValue)
 		{
@@ -341,10 +339,8 @@ namespace TLua
 				return;
 			}
 
-			PropertyArray* Properties = UStructMgr::Get<Type>();
-			for (PropertyBase* Property : *Properties) {
-				Property->GetLuaField(State, Index, &OutValue);
-			}
+			StructTypeProcessor* Processor = UStructProcessorMgr::Get<Type>();
+			Processor->FromLua(State, Index, OutValue);
 		}
 
 		inline static Type FromLua(lua_State* State, int Index)
@@ -357,17 +353,8 @@ namespace TLua
 
 		inline static void ToLua(lua_State* State, const Type& Value)
 		{
-			LuaNewTable(State);
-			TypeInfo<void*>::ToLua(State, (void*)TBaseStructure<Type>::Get());
-			LuaSetField(State, -2, "_ct");
-			PropertyArray* Properties = UStructMgr::Get<Type>();
-
-			for (PropertyBase* Property : *Properties) {
-				Property->SetLuaField(State, -1, &Value);
-			}
-
-			LuaGetGlobal(State, "_ls");
-			LuaSetMetatable(State, -2);
+			StructTypeProcessor* Processor = UStructProcessorMgr::Get<Type>();
+			Processor->ToLua(State, &Value);
 		}
 	};
 
