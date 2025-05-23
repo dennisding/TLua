@@ -12,14 +12,11 @@ UTLuaScriptComponent::UTLuaScriptComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
-
-
 // Called every frame
 void UTLuaScriptComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
-
 
 void UTLuaScriptComponent::OnRegister()
 {
@@ -29,10 +26,10 @@ void UTLuaScriptComponent::OnRegister()
 	if (!Actor) {
 		return;
 	}
-
 	
-	TLua::Call("_lua_bind_obj", (void*)Actor);
+//	TLua::Call("_lua_bind_obj", (void*)Actor);
 }
+
 void UTLuaScriptComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
@@ -57,5 +54,9 @@ void UTLuaScriptComponent::OnUnregister()
 	}
 
 	TLua::Call("_lua_unbind_obj", (void *)Actor);
-//	TLua::Call("_lua_silent_call_method", "_lua_unbind", (void*)Actor);
+}
+
+void UTLuaScriptComponent::BindOwner(AActor* Owner)
+{
+	TLua::Call("_lua_bind_obj", (void*)Owner);
 }

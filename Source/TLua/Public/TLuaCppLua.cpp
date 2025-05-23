@@ -27,11 +27,19 @@ namespace TLua
 			// setup parameter
 			void* ParameterMemory = (void*)FMemory_Alloca(Function->ParmsSize);
 			FMemory::Memzero(ParameterMemory, Function->ParmsSize);
+
+			int LuaTop = LuaGetTop(State);
 			for (int Index = 0; Index < ParameterProcessors.Num(); ++Index) {
 				// _cpp_object_call_fun(self, fun_context, args...)
-				int LuaIndex = Index + 3;
 				PropertyProcessor* Processor = ParameterProcessors[Index];
-				Processor->FromLua(State, LuaIndex, ParameterMemory);
+
+				int LuaIndex = Index + 3;
+				if (LuaIndex <= LuaTop) {
+					Processor->FromLua(State, LuaIndex, ParameterMemory);
+				}
+				else {
+					Processor->Property->InitializeValue_InContainer(ParameterMemory);
+				}
 			}
 
 			// call the function
@@ -61,7 +69,7 @@ namespace TLua
 				if (Property->HasAnyPropertyFlags(CPF_ReturnParm)) {
 					continue;
 				}
-
+				// add the processor
 				ParameterProcessors.Add(CreatePropertyProcessor(Property));
 			}
 		}
@@ -176,7 +184,7 @@ namespace TLua
 	int CppObjectCreate(lua_State* State)
 	{
 		AActor* Actor = GetValue<AActor*>(State, 1);
-		FString Name = GetValue<FString>(State, 2);
+		FName Name = GetValue<FName>(State, 2);
 		FString Type = GetValue<FString>(State, 3);
 		UClass* FoundClass = FindObject<UClass>(nullptr, *Type);
 		if (!FoundClass)
@@ -190,12 +198,11 @@ namespace TLua
 
 		// create the component
 		if (FoundClass->IsChildOf(UActorComponent::StaticClass())) {
-			UActorComponent* Component = NewObject<UActorComponent>(Actor, FoundClass);
+			UActorComponent* Component = NewObject<UActorComponent>(Actor, FoundClass, Name);
 			Component->RegisterComponent();
 			PushValue(State, Component);
 			return 1;
 		}
-
 
 		return 0;
 	}
@@ -236,7 +243,7 @@ namespace TLua
 
 		FName Name(AnsiName);
 		int64 Value = Type->GetValueByName(Name);
-		lua_pushnumber(State, Value);
+		lua_pushinteger(State, Value);
 
 		return 1;
 	}
@@ -253,9 +260,55 @@ namespace TLua
 		return 1;
 	}
 
+	// _cpp_load_class(name) -> UClass
+	static int CppLoadClass(lua_State* State)
+	{
+		const char* AnsiName = lua_tostring(State, 1);
+		FString Name(AnsiName);
+
+		UClass* Class = FindObject<UClass>(ANY_PACKAGE, *Name);
+		if (!Class) {
+			FString FullName = "/Script/Engine." + Name;
+			Class = LoadObject<UClass>(nullptr, *FullName);
+		}
+
+		if (Class) {
+			lua_pushlightuserdata(State, Class);
+			return 1;
+		}
+		UE_LOG(Lua, Error, TEXT("Unable to load class:%s"), *Name);
+		return 0;
+	}
+
+	// _cpp_create_default_subobject(Object, Class.CameraComponent, FName)
+	int CppCreateDefaultSubobject(lua_State* State)
+	{
+		int Top = lua_gettop(State);
+		AActor* Parent = TypeInfo<AActor*>::FromLua(State, 1);
+		FName Name = TypeInfo<FName>::FromLua(State, 2);
+		UClass* Class = (UClass*)lua_touserdata(State, 3);
+
+		UObject* Object = Parent->CreateDefaultSubobject(Name, UObject::StaticClass(), Class, true, false);
+		if (!Object) {
+			return 0;
+		}
+
+		UActorComponent* ActorComponent = Cast<UActorComponent>(Object);
+		if (ActorComponent) {
+			PushValue(State, ActorComponent);
+			return 1;
+		}
+
+		PushValue(State, Object);
+		return 1;
+	}
+
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
+
+		lua_register(State, "_cpp_load_class", CppLoadClass);
+		lua_register(State, "_cpp_create_default_subobject", CppCreateDefaultSubobject);
 
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
 

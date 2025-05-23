@@ -46,6 +46,8 @@ public:
 		return TLua::RCall<ReturnType>("_lua_call", (void*)Owner, Name, Args...);
 	}
 
+	virtual void BindOwner(AActor* Owner);
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;

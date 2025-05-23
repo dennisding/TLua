@@ -372,7 +372,9 @@ namespace TLua
 		{
 			LuaGetField(State, Index, "_co");
 
-			return (std::remove_pointer_t<Type>*)LuaGetUserData(State, Index);
+			std::remove_pointer_t<Type>*  Result = (std::remove_pointer_t<Type>*)LuaGetUserData(State, -1);
+			LuaPop(State, 1);
+			return Result;
 		}
 
 		inline static void ToLua(lua_State* State, const Type& Value)
@@ -401,7 +403,7 @@ namespace TLua
 		inline static std::remove_pointer_t<Type>* FromLua(lua_State* State, int Index)
 		{
 			LuaGetField(State, Index, "_co");
-			auto Result = (std::remove_pointer_t<Type>*)LuaGetUserData(State, -1);
+			std::remove_pointer_t<Type>* Result = (std::remove_pointer_t<Type>*)LuaGetUserData(State, -1);
 			LuaPop(State, 1);
 
 			return Result;
@@ -413,6 +415,25 @@ namespace TLua
 			LuaGetGlobal(State, "_lua_get_obj");
 			LuaPushUserData(State, Value);
 			LuaPCall(State, 2, 1);
+		}
+	};
+
+	template <>
+	struct TypeInfo<FWeakObjectPtr>
+	{
+		inline static void FromLua(lua_State* State, int Index, FWeakObjectPtr& OutValue)
+		{
+			OutValue = TypeInfo<UObject*>::FromLua(State, Index);
+		}
+
+		inline static FWeakObjectPtr FromLua(lua_State* State, int Index)
+		{
+			return TypeInfo<UObject*>::FromLua(State, Index);
+		}
+
+		inline static void ToLua(lua_State* State, const FWeakObjectPtr& Value)
+		{
+			TypeInfo<UObject*>::ToLua(State, Value.Get());
 		}
 	};
 }

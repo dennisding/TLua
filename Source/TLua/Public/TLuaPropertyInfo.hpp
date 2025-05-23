@@ -106,6 +106,12 @@ namespace TLua
 	};
 
 	template <>
+	struct PropertyInfo<FWeakObjectProperty>
+	{
+		using ValueType = FWeakObjectPtr;
+	};
+
+	template <>
 	struct PropertyInfo<FStructProperty>
 	{
 		/// using ValueType = ? ? ? ;

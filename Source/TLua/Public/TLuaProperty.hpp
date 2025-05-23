@@ -36,7 +36,7 @@ namespace TLua
 			Property->DestroyValue_InContainer(Container);
 		}
 
-	private:
+	public:
 		FProperty* Property;
 		std::string AnsiName;
 	};
@@ -172,6 +172,9 @@ namespace TLua
 		else if (auto* ObjectProperty = CastField<FObjectProperty>(Property))
 		{
 			Dispatcher.Visit(ObjectProperty);
+		}
+		else if (auto* WeakObjectProperty = CastField<FWeakObjectProperty>(Property)) {
+			Dispatcher.Visit(WeakObjectProperty);
 		}
 		else {
 			UE_LOG(Lua, Error, TEXT("unhandled attribute:%s"), *Property->GetName());

@@ -20,7 +20,7 @@ void FTLuaModule::InitLua()
 	TLua::Init();
 
 	TArray<FString> dirs;
-	dirs.Add(TEXT("")); // current dir
+	// dirs.Add(TEXT("")); // current dir
 	dirs.Add(TEXT("Libs/"));
 	dirs.Add(TEXT("Actors/"));
 	dirs.Add(TEXT("Unreal/"));
