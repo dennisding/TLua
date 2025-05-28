@@ -25,6 +25,17 @@ public:
 	UTLuaScriptComponent();
 
 	template <typename ...ArgTypes>
+	void TryCall(const char* Name, const ArgTypes&... Args)
+	{
+		AActor* Owner = GetOwner();
+		if (!Owner) {
+			return;
+		}
+
+		TLua::Call("_lua_tcall", (void*)Owner, Name, Args...);
+	}
+
+	template <typename ...ArgTypes>
 	void Call(const char* Name, const ArgTypes&... Args)
 	{
 		AActor* Owner = GetOwner();

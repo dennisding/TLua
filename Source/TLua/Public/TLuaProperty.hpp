@@ -57,8 +57,11 @@ namespace TLua
 
 		virtual void FromLua(lua_State* State, int Index, void* Container) override
 		{
-			ValueType* ValuePtr = Property->ContainerPtrToValuePtr<ValueType>(Container);
-			*ValuePtr = TypeInfo<ValueType>::FromLua(State, Index);
+			//ValueType* ValuePtr = Property->ContainerPtrToValuePtr<ValueType>(Container);
+			//*ValuePtr = TypeInfo<ValueType>::FromLua(State, Index);
+
+			Property->SetPropertyValue_InContainer(Container, 
+						TypeInfo<ValueType>::FromLua(State, Index));
 		}
 
 		virtual void ToLua(lua_State* State, const void* Container) override

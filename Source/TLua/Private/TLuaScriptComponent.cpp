@@ -58,5 +58,5 @@ void UTLuaScriptComponent::OnUnregister()
 
 void UTLuaScriptComponent::BindOwner(AActor* Owner)
 {
-	TLua::Call("_lua_bind_obj", (void*)Owner);
+	TLua::Call("_lua_bind_obj", (void*)Owner, (void*)Owner->GetClass());
 }
