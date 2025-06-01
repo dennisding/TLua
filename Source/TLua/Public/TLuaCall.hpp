@@ -53,9 +53,9 @@ namespace TLua
 	template <int index, typename Type>
 	struct Getter
 	{
-		static Type GetValue(lua_State* state)
+		static Type FromLua(lua_State* state)
 		{
-			return TypeInfo<Type>::GetValue(state, index);
+			return TypeInfo<Type>::FromLua(state, index);
 		}
 	};
 
@@ -100,7 +100,7 @@ namespace TLua
 		template <typename ...GetterType>
 		static ReturnType DoCall(FunType fun, lua_State* state, TypeList<GetterType...> getter)
 		{
-			return fun(GetterType::GetValue(state)...);
+			return fun(GetterType::FromLua(state)...);
 		}
 	};
 
@@ -108,7 +108,7 @@ namespace TLua
 	int FunProcessor(lua_State* state)
 	{
 		using FunType = void(*)(Types... args);
-		FunType fun = TypeInfo<FunType>::GetValue(state, 2);
+		FunType fun = TypeInfo<FunType>::FromLua(state, 2);
 
 		CallHelper<void, FunType, Types...>::Call(fun, state);
 
@@ -119,7 +119,7 @@ namespace TLua
 	int FunProcessorWithReturn(lua_State* state)
 	{
 		using FunType = ReturnType(*)(Types... args);
-		FunType fun = TypeInfo<FunType>::GetValue(state, 2);
+		FunType fun = TypeInfo<FunType>::FromLua(state, 2);
 
 		TypeInfo<ReturnType>::PushValue(state,
 			CallHelper<ReturnType, FunType, Types...>::Call(fun, state));
@@ -145,4 +145,93 @@ namespace TLua
 	{
 		RegisterCallbackImp(name, GetProcessor(callback), callback);
 	}
+
+	template <typename Type, typename ReturnType, typename ...ArgTypes>
+	class MethodContext
+	{
+		using MethodType = ReturnType(Type::*)(ArgTypes...);
+		using ArgList = typename ExtendGetter<3, TypeList<>, ArgTypes...>::List;
+	public:
+		MethodContext(MethodType InMethod) : Method(InMethod)
+		{
+		}
+
+		// _callback(self, context, args...)
+		static int Callback(lua_State* State)
+		{
+			using ContextType = MethodContext<Type, ReturnType, ArgTypes...>;
+			UObject* Object = (UObject*)LuaGetUserData(State, 1);
+			Type* Self = Cast<Type>(Object);
+			if (!Self) {
+				return 0;
+			}
+
+			ContextType* Context = (ContextType*)LuaGetUserData(State, 2);
+
+			Context->DoCall(Self, State, ArgList());
+
+			return 0;
+		}
+
+		// _callback(self, context, args...)
+		static int CallbackWithReturn(lua_State* State)
+		{
+			using ContextType = MethodContext<Type, ReturnType, ArgTypes...>;
+			UObject* Object = (UObject*)LuaGetUserData(State, 1);
+			Type* Self = Cast<Type>(Object);
+			if (!Self) {
+				return 0;
+			}
+
+			ContextType* Context = (ContextType*)LuaGetUserData(State, 2);
+
+			TypeInfo<ReturnType>::ToLua(State, Context->DoCall(Self, State, ArgList()));
+
+			return 1;
+		}
+
+		template <typename ...GetterType>
+		ReturnType DoCall(Type* Self, lua_State* State, TypeList<GetterType...> Getter)
+		{
+			return (Self->*Method)(GetterType::FromLua(State)...);
+		}
+
+		inline static LuaCFun GetCallback()
+		{
+			return GetCallbackImp(std::is_same<ReturnType, void>());
+		}
+
+	private:
+		inline static LuaCFun GetCallbackImp(std::true_type is_void)
+		{
+			return Callback;
+		}
+
+		inline static LuaCFun GetCallbackImp(std::false_type not_void)
+		{
+			return CallbackWithReturn;
+		}
+
+	public:
+		MethodType Method;
+	};
+
+	template <typename Type, typename ReturnType, typename ...ArgTypes>
+	void ActorMethod(const char* Class, const char* Name, ReturnType (Type::*Method)(ArgTypes...Args))
+	{
+		auto Context = new MethodContext<Type, ReturnType, ArgTypes...>(Method);
+
+		Call("_lua_actor_method", Class, Name, Context->GetCallback(), (void*)Context);
+	}
+
+	template <typename Type, typename ReturnType, typename ...ArgTypes>
+	void ComponentMethod(const char* Component, const char* Name,
+		ReturnType(Type::* Method)(ArgTypes...Args))
+	{
+		auto Context = new MethodContext<Type, ReturnType, ArgTypes...>(Method);
+
+		Call("_lua_component_method", Component, Name, Context->GetCallback(), (void*)Context);
+	}
+
+	void RegisterUnreal();
 }

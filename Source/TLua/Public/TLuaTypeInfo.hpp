@@ -173,6 +173,15 @@ namespace TLua
 	};
 
 	template <>
+	struct TypeInfo<int(*)(lua_State*)>
+	{
+		inline static void ToLua(lua_State* State, const lua_CFunction &Fun)
+		{
+			LuaPushCFunction(State, Fun);
+		}
+	};
+
+	template <>
 	struct TypeInfo<FString>
 	{
 		inline static void FromLua(lua_State* State, int Index, FString& OutValue)
@@ -192,6 +201,10 @@ namespace TLua
 			LuaPushLString(State, (const char*)(*Value), Value.NumBytesWithoutNull());
 		}
 	};
+
+	template <size_t Size>
+	struct TypeInfo<wchar_t[Size]> : public TypeInfo<FString>
+	{ };
 
 	template <>
 	struct TypeInfo<FName>
@@ -379,13 +392,6 @@ namespace TLua
 
 		inline static void ToLua(lua_State* State, const Type& Value)
 		{
-			//LuaNewTable(State);
-			//TypeInfo<void*>::ToLua(State, Value->GetClass());
-			//LuaSetField(State, -2, "_ct");
-			//TypeInfo<void*>::ToLua(State, Value);
-			//LuaSetField(State, -2, "_co");
-			//LuaGetGlobal(State, "_lc"); // lua component
-			//LuaSetMetatable(State, -2);
 			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
 			LuaGetGlobal(State, "_lua_get_com");
 			LuaPushUserData(State, Value);

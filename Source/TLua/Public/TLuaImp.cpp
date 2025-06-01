@@ -362,6 +362,11 @@ namespace TLua
 		lua_pushnil(state);
 	}
 
+	void LuaPushCFunction(lua_State* State, lua_CFunction Fun)
+	{
+		lua_pushcfunction(State, Fun);
+	}
+
 	void LuaPushCppType(lua_State* State, int Type)
 	{
 		lua_pushinteger(State, Type);

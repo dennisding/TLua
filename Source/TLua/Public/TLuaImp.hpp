@@ -35,6 +35,7 @@ namespace TLua
 	TLua_API void LuaPushLString(lua_State* state, const char* buff, int size);
 	TLua_API void LuaPushUserData(lua_State* state, void* user_data);
 	TLua_API void LuaPushNil(lua_State* state);
+	TLua_API void LuaPushCFunction(lua_State* State, lua_CFunction Fun);
 
 	TLua_API void LuaNewTable(lua_State* state);
 	TLua_API void LuaSetTable(lua_State* state, int index);
