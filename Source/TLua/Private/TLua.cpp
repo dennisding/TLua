@@ -20,12 +20,11 @@ void FTLuaModule::InitLua()
 	TLua::Init();
 
 	TArray<FString> dirs;
-	// dirs.Add(TEXT("")); // current dir
+	dirs.Add(TEXT("")); // current dir
 	dirs.Add(TEXT("Libs/"));
 	dirs.Add(TEXT("Actors/"));
 	dirs.Add(TEXT("Unreal/"));
 	dirs.Add(TEXT("Game/"));
-	dirs.Add(TEXT("GameLibs/"));
 
 	FString root = FPaths::ProjectContentDir() / TEXT("Script/Lua/");
 	TLua::Call("_init_sys", root, dirs);
