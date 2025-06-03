@@ -8,7 +8,7 @@
 namespace TLua
 {
 	// <Type, is_struct, is_actorcomponent, is_actor>
-	template <typename Type, typename = void, typename = void, typename = void, typename = void>
+	template <typename Type, typename = void>
 	struct TypeInfo {};
 
 	template <typename Type>
@@ -372,7 +372,7 @@ namespace TLua
 
 
 	template <typename Type>
-	struct TypeInfo<Type, void, void,
+	struct TypeInfo<Type, 
 		std::void_t<std::enable_if_t<std::is_base_of_v<UActorComponent, std::remove_pointer_t<Type>>>>>
 	{
 
@@ -402,7 +402,7 @@ namespace TLua
 
 	// Actor and it's child class
 	template <typename Type>
-	struct TypeInfo<Type, void, void,
+	struct TypeInfo<Type, 
 		std::void_t<std::enable_if_t<std::is_base_of_v<AActor, std::remove_pointer_t<Type>>>>>
 	{
 
