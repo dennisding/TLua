@@ -19,5 +19,13 @@ namespace TLua
 		{
 			Result = new Processor<FObjectProperty, AActor*>(Property);
 		}
+		else if (Class->IsChildOf(UDataAsset::StaticClass()))
+		{
+			Result = new Processor<FObjectProperty, UObject*>(Property);
+		}
+		else 
+		{
+			UE_LOG(Lua, Error, TEXT("Unhandle Object Property:%s"), *Class->GetName());
+		}
 	}
 }

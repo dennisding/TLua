@@ -182,6 +182,11 @@ namespace TLua
 	};
 
 	template <>
+	struct TypeInfo<int(lua_State*)> : public TypeInfo<int(*)(lua_State*)>
+	{
+	};
+
+	template <>
 	struct TypeInfo<FString>
 	{
 		inline static void FromLua(lua_State* State, int Index, FString& OutValue)
@@ -193,7 +198,8 @@ namespace TLua
 		{
 			size_t Size = 0;
 			const TCHAR* Buffer = (const TCHAR*)LuaGetLString(State, Index, Size);
-			return FString(Size / sizeof(TCHAR), Buffer);
+			return FString::ConstructFromPtrSize(Buffer, Size/sizeof(TCHAR));
+//			return FString(Size / sizeof(TCHAR), Buffer);
 		}
 
 		inline static void ToLua(lua_State* State, const FString& Value)
@@ -258,18 +264,20 @@ namespace TLua
 
 		inline static UObject* FromLua(lua_State* State, int Index)
 		{
-			if (!LuaIsTable(State, Index)) {
-				return nullptr;
-			}
 			LuaGetField(State, Index, "_co");
 			UObject* Result = (UObject*)LuaGetUserData(State, -1);
 			LuaPop(State, 1);
+
 			return Result;
 		}
 
-		inline static void ToLua(lua_State* State, UObject* Value)
+		inline static void ToLua(lua_State* State, const UObject* Value)
 		{
-			LuaPushUserData(State, Value);
+			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
+			LuaGetGlobal(State, "_lua_get_obj");
+			LuaPushUserData(State, (void*)Value);
+			LuaPushUserData(State, Value->GetClass());
+			LuaPCall(State, 3, 1);
 		}
 	};
 
@@ -423,7 +431,7 @@ namespace TLua
 		inline static void ToLua(lua_State* State, const Type& Value)
 		{
 			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
-			LuaGetGlobal(State, "_lua_get_obj");
+			LuaGetGlobal(State, "_lua_get_actor");
 			LuaPushUserData(State, Value);
 			LuaPushUserData(State, Value->GetClass());
 			LuaPCall(State, 3, 1);

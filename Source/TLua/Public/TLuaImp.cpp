@@ -95,14 +95,14 @@ namespace TLua
 	}
 
 	// _text function in lua
-	static int CppUTF8_TO_UTF16(lua_State* state)
+	static int CppUTF8_TO_UTF16(lua_State* State)
 	{
 		size_t utf8_size = 0;
-		UTF8CHAR* buff = (UTF8CHAR *)lua_tolstring(state, 1, &utf8_size);
+		UTF8CHAR* buff = (UTF8CHAR *)lua_tolstring(State, 1, &utf8_size);
 
 		FUTF8ToTCHAR converter(buff, utf8_size);
 		size_t size = converter.Length() * sizeof(TCHAR);
-		lua_pushlstring(state, (const char*)converter.Get(), size);
+		lua_pushlstring(State, (const char*)converter.Get(), size);
 		return 1;
 	}
 
