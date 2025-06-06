@@ -273,6 +273,11 @@ namespace TLua
 
 		inline static void ToLua(lua_State* State, const UObject* Value)
 		{
+			if (Value == nullptr) {
+				LuaPushNil(State);
+				return;
+			}
+
 			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
 			LuaGetGlobal(State, "_lua_get_obj");
 			LuaPushUserData(State, (void*)Value);

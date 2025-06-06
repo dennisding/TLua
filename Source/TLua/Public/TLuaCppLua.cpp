@@ -112,6 +112,22 @@ namespace TLua
 		return 1;
 	}
 
+	int CppObjectGetAttrs(lua_State* State)
+	{
+		UClass* Class = (UClass*)lua_touserdata(State, 1);
+
+		TArray<FString> Result;
+
+		for (TFieldIterator<FProperty> It(Class); It; ++It) {
+			FProperty* Property = *It;
+
+			Result.Push(Property->GetName());
+		}
+
+		PushValue(State, Result);
+		return 1;
+	}
+
 	int CppObjectGetType(lua_State* State)
 	{
 		UObject* Object = (UObject*)lua_touserdata(State, 1);
@@ -313,6 +329,7 @@ namespace TLua
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
 
 		lua_register(State, "_cpp_object_get_name", CppObjectGetName);
+		lua_register(State, "_cpp_object_get_attrs", CppObjectGetAttrs);
 		lua_register(State, "_cpp_object_get_type", CppObjectGetType);
 		lua_register(State, "_cpp_object_get_info", CppObjectGetInfo);
 		lua_register(State, "_cpp_object_call_fun", CppObjectCallFun);
