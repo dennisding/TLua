@@ -302,9 +302,22 @@ namespace TLua
 		lua_seti(State, Index, N);
 	}
 
+	void LuaGetI(lua_State* State, int Index, lua_Integer N)
+	{
+		lua_geti(State, Index, N);
+	}
+
 	void LuaGetTable(lua_State* state, int index)
 	{
 		lua_gettable(state, index);
+	}
+
+	int LuaGetTableSize(lua_State* State, int Index)
+	{
+		lua_len(State, Index);
+		int length = lua_tointeger(State, -1);
+		lua_pop(State, 1);
+		return length;
 	}
 
 	void LuaLen(lua_State* state, int index)

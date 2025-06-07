@@ -25,7 +25,13 @@ namespace TLua
 		}
 		else 
 		{
+			Result = new Processor<FObjectProperty, UObject*>(Property);
 			UE_LOG(Lua, Error, TEXT("Unhandle Object Property:%s"), *Class->GetName());
 		}
+	}
+
+	void ProcessorVisitor::Visit(FArrayProperty* Property)
+	{
+		Result = new Processor<FArrayProperty, void>(Property);
 	}
 }

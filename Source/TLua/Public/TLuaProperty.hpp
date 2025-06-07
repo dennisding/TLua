@@ -133,6 +133,61 @@ namespace TLua
 		FEnumProperty* Property;
 	};
 
+	template <>
+	class Processor<FArrayProperty, void> : public PropertyProcessor
+	{
+	public:
+		virtual ~Processor() {}
+
+		Processor(FArrayProperty* InProperty) 
+			: PropertyProcessor(InProperty), Property(InProperty)
+		{
+			InnerProcessor = CreatePropertyProcessor(Property->Inner);
+		}
+
+		virtual void FromLua(lua_State* State, int Index, void* Container) override
+		{
+			if (!LuaIsTable(State, Index)) {
+				return;
+			}
+
+			void* ArrayPtr = Property->ContainerPtrToValuePtr<void>(Container);
+			FScriptArrayHelper Array(Property, ArrayPtr);
+			if (Array.Num() != 0) {
+				Array.RemoveValues(0, Array.Num());
+			}
+
+			int Size = LuaGetTableSize(State, Index);
+			for (int ArrayIndex = 0; ArrayIndex < Size; ++ArrayIndex) {
+//				LuaGetTable(State, ArrayIndex + 1);
+				int ItemIndex = Array.AddValue();
+				void* ItemPtr = Array.GetRawPtr(ItemIndex);
+
+				LuaGetI(State, Index, ArrayIndex + 1);
+				InnerProcessor->FromLua(State, -1, ItemPtr);
+				LuaPop(State);
+			}
+		}
+
+		virtual void ToLua(lua_State* State, const void* Container) override
+		{
+			const void* ArrayPtr = Property->ContainerPtrToValuePtr<void>(Container);
+			FScriptArrayHelper Array(Property, ArrayPtr);
+
+			LuaNewTable(State);
+			for (int Index = 0; Index < Array.Num(); ++Index) {
+				void* ItemPtr = Array.GetRawPtr(Index);
+				LuaPushInteger(State, Index + 1);
+				InnerProcessor->ToLua(State, ItemPtr);
+				LuaSetTable(State, -3);
+			}
+		}
+
+	private:
+		FArrayProperty* Property;
+		PropertyProcessor* InnerProcessor;
+	};
+
 	template <typename DispatcherType>
 	void DispatchProperty(FProperty* Property, DispatcherType& Dispatcher)
 	{
@@ -151,6 +206,9 @@ namespace TLua
 		else if (auto* StrProperty = CastField<FStrProperty>(Property))
 		{
 			Dispatcher.Visit(StrProperty);
+		}
+		else if (auto* TextProperty = CastField<FTextProperty>(Property)) {
+			Dispatcher.Visit(TextProperty);
 		}
 		else if (auto* BoolProperty = CastField<FBoolProperty>(Property))
 		{
@@ -179,8 +237,13 @@ namespace TLua
 		else if (auto* WeakObjectProperty = CastField<FWeakObjectProperty>(Property)) {
 			Dispatcher.Visit(WeakObjectProperty);
 		}
+		else if (auto* ArrayProperty = CastField<FArrayProperty>(Property)) {
+			Dispatcher.Visit(ArrayProperty);
+		}
 		else {
-			UE_LOG(Lua, Error, TEXT("unhandled attribute:%s"), *Property->GetName());
+			UE_LOG(Lua, Error, TEXT("unhandled attribute:%s<%s>"), 
+				*Property->GetName(), *Property->GetClass()->GetName());
+			//Dispatcher.Visit(Property);
 		}
 	}
 
@@ -197,6 +260,7 @@ namespace TLua
 		}
 
 		void Visit(FObjectProperty* Property);
+		void Visit(FArrayProperty* Property);
 
 	public:
 		PropertyProcessor* Result;

@@ -43,6 +43,7 @@ namespace TLua
 	TLua_API void LuaSetI(lua_State* State, int Index, lua_Integer N);
 	TLua_API void LuaGetI(lua_State* State, int Index, lua_Integer N);
 	TLua_API void LuaGetTable(lua_State* state, int index);
+	TLua_API int LuaGetTableSize(lua_State* State, int Index);
 	TLua_API void LuaLen(lua_State* state, int index);
 	TLua_API int LuaNext(lua_State* state, int index);
 
