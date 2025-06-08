@@ -294,12 +294,13 @@ namespace TLua
 	// _cpp_load_class(name) -> UClass
 	static int CppLoadClass(lua_State* State)
 	{
-		const char* AnsiName = lua_tostring(State, 1);
-		FString Name(AnsiName);
+		//TCHAR* AnsiName = (TCHAR*)lua_tostring(State, 1);
+		//FString Name(AnsiName);
+		TCHAR* Name = (TCHAR*)lua_tostring(State, 1);
 
-		UClass* Class = FindObject<UClass>(nullptr, *Name);
+		UClass* Class = FindObject<UClass>(nullptr, Name);
 		if (!Class) {
-			Class = LoadObject<UClass>(nullptr, *Name);
+			Class = LoadObject<UClass>(nullptr, Name);
 		}
 		if (Class) {
 			lua_pushlightuserdata(State, Class);
