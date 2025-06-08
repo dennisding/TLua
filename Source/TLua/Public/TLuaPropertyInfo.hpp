@@ -96,7 +96,8 @@ namespace TLua
 	template <>
 	struct PropertyInfo<FObjectProperty>
 	{
-		using ValueType = UObject*;
+//		using ValueType = UObject*;
+		using ValueType = FObjectPtr;
 	};
 
 	template <>

@@ -7,6 +7,7 @@
 #include "TLua.h"
 #include "TLuaPropertyInfo.hpp"
 #include "TLuaTypeInfo.hpp"
+#include "TLuaTypes.hpp"
 #include <string>
 
 namespace TLua
@@ -187,6 +188,38 @@ namespace TLua
 		FArrayProperty* Property;
 		PropertyProcessor* InnerProcessor;
 	};
+
+	//template <typename ValueType>
+	//class Processor<FObjectProperty, ValueType> : public PropertyProcessor
+	//{
+	//public:
+	//	virtual ~Processor() {}
+	//	Processor(FObjectProperty* InProperty)
+	//		: PropertyProcessor(InProperty), Property(InProperty)
+	//	{
+	//	}
+
+	//	virtual void FromLua(lua_State* State, int Index, void* Container) override
+	//	{
+	//		//ValueType* ValuePtr = Property->ContainerPtrToValuePtr<ValueType>(Container);
+	//		//*ValuePtr = TypeInfo<ValueType>::FromLua(State, Index);
+
+	//		Property->SetPropertyValue_InContainer(Container,
+	//			TypeInfo<ValueType>::FromLua(State, Index));
+	//	}
+
+	//	virtual void ToLua(lua_State* State, const void* Container) override
+	//	{
+	//		//const ValueType* ValuePtr = Property->ContainerPtrToValuePtr<ValueType>(Container);
+	//		//TypeInfo<ValueType>::ToLua(State, *ValuePtr);
+	//		auto Object = Property->GetObjectPropertyValue_InContainer(Container);
+	//		//auto Ptr = Property->GetPropertyValue_InContainer(Container);
+	//		TypeInfo<ValueType>::ToLua(State, (ValueType)Object);
+	//	}
+
+	//private:
+	//	FObjectProperty* Property;
+	//};
 
 	template <typename DispatcherType>
 	void DispatchProperty(FProperty* Property, DispatcherType& Dispatcher)

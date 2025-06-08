@@ -286,6 +286,42 @@ namespace TLua
 		}
 	};
 
+	template <>
+	struct TypeInfo<TObjectPtr<UObject>>
+	{
+		using ValueType = TObjectPtr<UObject>;
+		using RealType = UObject*;
+		inline static void FromLua(lua_State* State, int Index, ValueType& OutValue)
+		{
+			OutValue = FromLua(State, Index);
+		}
+
+		inline static UObject* FromLua(lua_State* State, int Index)
+		{
+			return TypeInfo<RealType>::FromLua(State, Index);
+			//LuaGetField(State, Index, "_co");
+			//UObject* Result = (UObject*)LuaGetUserData(State, -1);
+			//LuaPop(State, 1);
+
+			//return Result;
+		}
+
+		inline static void ToLua(lua_State* State, const ValueType& Value)
+		{
+			TypeInfo<RealType>::ToLua(State, Value);
+			//if (Value == nullptr) {
+			//	LuaPushNil(State);
+			//	return;
+			//}
+
+			//LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
+			//LuaGetGlobal(State, "_lua_get_obj");
+			//LuaPushUserData(State, (void*)Value);
+			//LuaPushUserData(State, Value->GetClass());
+			//LuaPCall(State, 3, 1);
+		}
+	};
+
 	template <typename ValueType>
 	struct TypeInfo<TArray<ValueType>>
 	{

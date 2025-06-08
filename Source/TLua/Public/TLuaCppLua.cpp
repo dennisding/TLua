@@ -8,6 +8,7 @@
 #include "TLuaProperty.hpp"
 
 #include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
 #include "UObject/UObjectGlobals.h"
 
 namespace TLua
@@ -223,6 +224,20 @@ namespace TLua
 		return 0;
 	}
 
+	int CppObjectAddToRoot(lua_State* State)
+	{
+		UObject* Object = (UObject*)lua_touserdata(State, 1);
+		Object->AddToRoot();
+		return 0;
+	}
+
+	int CppObjectRemoveFromRoot(lua_State* State)
+	{
+		UObject* Object = (UObject*)lua_touserdata(State, 1);
+		Object->RemoveFromRoot();
+		return 0;
+	}
+
 	// _cpp_enum_get_type_name(ctype)
 	static int CppEnumGetTypeName(lua_State* State)
 	{
@@ -282,17 +297,36 @@ namespace TLua
 		const char* AnsiName = lua_tostring(State, 1);
 		FString Name(AnsiName);
 
-		UClass* Class = FindObject<UClass>(ANY_PACKAGE, *Name);
+		UClass* Class = FindObject<UClass>(nullptr, *Name);
 		if (!Class) {
-			FString FullName = "/Script/Engine." + Name;
-			Class = LoadObject<UClass>(nullptr, *FullName);
+			Class = LoadObject<UClass>(nullptr, *Name);
 		}
-
 		if (Class) {
 			lua_pushlightuserdata(State, Class);
 			return 1;
 		}
-		UE_LOG(Lua, Error, TEXT("Unable to load class:%s"), *Name);
+
+		return 0;
+	}
+
+	// _cpp_new_object(UClass*)
+	int CppNewObject(lua_State* State)
+	{
+		UClass* Class = (UClass*)lua_touserdata(State, 1);
+		if (!GEngine->GetCurrentPlayWorld()) {
+			return 0;
+		}
+		UGameInstance* Instance = GEngine->GetCurrentPlayWorld()->GetGameInstance();
+		if (!Instance) {
+			return 0;
+		}
+
+		UObject* Object = NewObject<UObject>(Instance, Class);
+		if (Object) {
+			lua_pushlightuserdata(State, Object);
+			return 1;
+		}
+
 		return 0;
 	}
 
@@ -325,6 +359,7 @@ namespace TLua
 
 		lua_register(State, "_cpp_load_class", CppLoadClass);
 		lua_register(State, "_cpp_create_default_subobject", CppCreateDefaultSubobject);
+		lua_register(State, "_cpp_new_object", CppNewObject);
 
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
 
@@ -334,6 +369,8 @@ namespace TLua
 		lua_register(State, "_cpp_object_get_info", CppObjectGetInfo);
 		lua_register(State, "_cpp_object_call_fun", CppObjectCallFun);
 		lua_register(State, "_cpp_object_create", CppObjectCreate);
+		lua_register(State, "_cpp_object_add_to_root", CppObjectAddToRoot);
+		lua_register(State, "_cpp_object_remove_from_root", CppObjectRemoveFromRoot);
 
 		// enum
 		lua_register(State, "_cpp_enum_get_type_name", CppEnumGetTypeName);
