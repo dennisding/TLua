@@ -10,7 +10,7 @@
 
 void UTLuaGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
-	TLua::Call("game_start");
+	TLua::Call("game_start", (UObject*)this->GetGameInstance());
 }
 void UTLuaGameInstanceSubsystem::Deinitialize()
 {

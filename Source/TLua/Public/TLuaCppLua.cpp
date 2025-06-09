@@ -224,17 +224,23 @@ namespace TLua
 		return 0;
 	}
 
-	int CppObjectAddToRoot(lua_State* State)
-	{
-		UObject* Object = (UObject*)lua_touserdata(State, 1);
-		Object->AddToRoot();
-		return 0;
-	}
+	//int CppObjectAddToRoot(lua_State* State)
+	//{
+	//	UObject* Object = (UObject*)lua_touserdata(State, 1);
+	//	Object->AddToRoot();
+	//	return 0;
+	//}
 
-	int CppObjectRemoveFromRoot(lua_State* State)
+	//int CppObjectRemoveFromRoot(lua_State* State)
+	//{
+	//	UObject* Object = (UObject*)lua_touserdata(State, 1);
+	//	Object->RemoveFromRoot();
+	//	return 0;
+	//}
+	int CppObjectRemoveFromParent(lua_State* State)
 	{
 		UObject* Object = (UObject*)lua_touserdata(State, 1);
-		Object->RemoveFromRoot();
+		Object->Rename(nullptr, nullptr, REN_DontCreateRedirectors);
 		return 0;
 	}
 
@@ -314,16 +320,18 @@ namespace TLua
 	// _cpp_new_object(UClass*)
 	int CppNewObject(lua_State* State)
 	{
-		UClass* Class = (UClass*)lua_touserdata(State, 1);
-		if (!GEngine->GetCurrentPlayWorld()) {
-			return 0;
-		}
-		UGameInstance* Instance = GEngine->GetCurrentPlayWorld()->GetGameInstance();
-		if (!Instance) {
-			return 0;
-		}
+		UObject* Outter = (UObject*)lua_touserdata(State, 1);
+		UClass* Class = (UClass*)lua_touserdata(State, 2);
+		//if (!GEngine->GetCurrentPlayWorld()) {
+		//	return 0;
+		//}
+		//UGameInstance* Instance = GEngine->GetCurrentPlayWorld()->GetGameInstance();
+		//if (!Instance) {
+		//	return 0;
+		//}
 
-		UObject* Object = NewObject<UObject>(Instance, Class);
+		//UObject* Object = NewObject<UObject>(Instance, Class);
+		UObject* Object = NewObject<UObject>(Outter, Class);
 		if (Object) {
 			lua_pushlightuserdata(State, Object);
 			return 1;
@@ -336,7 +344,6 @@ namespace TLua
 	int CppGetEngine(lua_State* State)
 	{
 //		PushValue(State, (UObject*)GEngine);
-		GEngine->GetWorld();
 		lua_pushlightuserdata(State, GEngine);
 		return 1;
 	}
@@ -381,8 +388,9 @@ namespace TLua
 		lua_register(State, "_cpp_object_get_info", CppObjectGetInfo);
 		lua_register(State, "_cpp_object_call_fun", CppObjectCallFun);
 		lua_register(State, "_cpp_object_create", CppObjectCreate);
-		lua_register(State, "_cpp_object_add_to_root", CppObjectAddToRoot);
-		lua_register(State, "_cpp_object_remove_from_root", CppObjectRemoveFromRoot);
+//		lua_register(State, "_cpp_object_add_to_root", CppObjectAddToRoot);
+//		lua_register(State, "_cpp_object_remove_from_root", CppObjectRemoveFromRoot);
+		lua_register(State, "_cpp_object_remove_from_parent", CppObjectRemoveFromParent);
 
 		// enum
 		lua_register(State, "_cpp_enum_get_type_name", CppEnumGetTypeName);
