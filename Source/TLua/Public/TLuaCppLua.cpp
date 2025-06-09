@@ -224,19 +224,7 @@ namespace TLua
 		return 0;
 	}
 
-	//int CppObjectAddToRoot(lua_State* State)
-	//{
-	//	UObject* Object = (UObject*)lua_touserdata(State, 1);
-	//	Object->AddToRoot();
-	//	return 0;
-	//}
-
-	//int CppObjectRemoveFromRoot(lua_State* State)
-	//{
-	//	UObject* Object = (UObject*)lua_touserdata(State, 1);
-	//	Object->RemoveFromRoot();
-	//	return 0;
-	//}
+	// _cpp_object_remove_from_parent()
 	int CppObjectRemoveFromParent(lua_State* State)
 	{
 		UObject* Object = (UObject*)lua_touserdata(State, 1);
@@ -300,9 +288,6 @@ namespace TLua
 	// _cpp_load_class(name) -> UClass
 	static int CppLoadClass(lua_State* State)
 	{
-		//TCHAR* AnsiName = (TCHAR*)lua_tostring(State, 1);
-		//FString Name(AnsiName);
-//		TCHAR* Name = (TCHAR*)lua_tostring(State, 1);
 		FString Name = TypeInfo<FString>::FromLua(State, 1);
 
 		UClass* Class = FindObject<UClass>(nullptr, *Name);
@@ -322,15 +307,7 @@ namespace TLua
 	{
 		UObject* Outter = (UObject*)lua_touserdata(State, 1);
 		UClass* Class = (UClass*)lua_touserdata(State, 2);
-		//if (!GEngine->GetCurrentPlayWorld()) {
-		//	return 0;
-		//}
-		//UGameInstance* Instance = GEngine->GetCurrentPlayWorld()->GetGameInstance();
-		//if (!Instance) {
-		//	return 0;
-		//}
 
-		//UObject* Object = NewObject<UObject>(Instance, Class);
 		UObject* Object = NewObject<UObject>(Outter, Class);
 		if (Object) {
 			lua_pushlightuserdata(State, Object);
@@ -343,7 +320,6 @@ namespace TLua
 	// _cpp_get_engine
 	int CppGetEngine(lua_State* State)
 	{
-//		PushValue(State, (UObject*)GEngine);
 		lua_pushlightuserdata(State, GEngine);
 		return 1;
 	}
@@ -388,8 +364,6 @@ namespace TLua
 		lua_register(State, "_cpp_object_get_info", CppObjectGetInfo);
 		lua_register(State, "_cpp_object_call_fun", CppObjectCallFun);
 		lua_register(State, "_cpp_object_create", CppObjectCreate);
-//		lua_register(State, "_cpp_object_add_to_root", CppObjectAddToRoot);
-//		lua_register(State, "_cpp_object_remove_from_root", CppObjectRemoveFromRoot);
 		lua_register(State, "_cpp_object_remove_from_parent", CppObjectRemoveFromParent);
 
 		// enum

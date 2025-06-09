@@ -25,8 +25,8 @@ namespace TLua
 		}
 		else 
 		{
+			// normal FObjectProperty
 			Result = new Processor<FObjectProperty, UObject*>(Property);
-			UE_LOG(Lua, Error, TEXT("Unhandle Object Property:%s"), *Class->GetName());
 		}
 	}
 

@@ -199,7 +199,6 @@ namespace TLua
 			size_t Size = 0;
 			const TCHAR* Buffer = (const TCHAR*)LuaGetLString(State, Index, Size);
 			return FString::ConstructFromPtrSize(Buffer, Size/sizeof(TCHAR));
-//			return FString(Size / sizeof(TCHAR), Buffer);
 		}
 
 		inline static void ToLua(lua_State* State, const FString& Value)
@@ -299,26 +298,11 @@ namespace TLua
 		inline static UObject* FromLua(lua_State* State, int Index)
 		{
 			return TypeInfo<RealType>::FromLua(State, Index);
-			//LuaGetField(State, Index, "_co");
-			//UObject* Result = (UObject*)LuaGetUserData(State, -1);
-			//LuaPop(State, 1);
-
-			//return Result;
 		}
 
 		inline static void ToLua(lua_State* State, const ValueType& Value)
 		{
 			TypeInfo<RealType>::ToLua(State, Value);
-			//if (Value == nullptr) {
-			//	LuaPushNil(State);
-			//	return;
-			//}
-
-			//LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
-			//LuaGetGlobal(State, "_lua_get_obj");
-			//LuaPushUserData(State, (void*)Value);
-			//LuaPushUserData(State, Value->GetClass());
-			//LuaPCall(State, 3, 1);
 		}
 	};
 

@@ -186,7 +186,6 @@ namespace TLua
 		lua_pushlstring(state, converter.Get(), converter.Length());
 
 		lua_call(state, 3, 0);
-		//CheckState(lua_pcall(state, 3, 0, 0), state);
 	}
 
 	void DoString(const char* buffer, const char* name)
@@ -269,7 +268,6 @@ namespace TLua
 	const char* LuaGetString(lua_State* state, int index)
 	{
 		return lua_tostring(state, index);
-		//return std::string(lua_tostring(state, index));
 	}
 
 	const char* LuaGetLString(lua_State* state, int index, size_t &size)
