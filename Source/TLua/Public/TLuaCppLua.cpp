@@ -296,11 +296,12 @@ namespace TLua
 	{
 		//TCHAR* AnsiName = (TCHAR*)lua_tostring(State, 1);
 		//FString Name(AnsiName);
-		TCHAR* Name = (TCHAR*)lua_tostring(State, 1);
+//		TCHAR* Name = (TCHAR*)lua_tostring(State, 1);
+		FString Name = TypeInfo<FString>::FromLua(State, 1);
 
-		UClass* Class = FindObject<UClass>(nullptr, Name);
+		UClass* Class = FindObject<UClass>(nullptr, *Name);
 		if (!Class) {
-			Class = LoadObject<UClass>(nullptr, Name);
+			Class = LoadObject<UClass>(nullptr, *Name);
 		}
 		if (Class) {
 			lua_pushlightuserdata(State, Class);
@@ -329,6 +330,15 @@ namespace TLua
 		}
 
 		return 0;
+	}
+
+	// _cpp_get_engine
+	int CppGetEngine(lua_State* State)
+	{
+//		PushValue(State, (UObject*)GEngine);
+		GEngine->GetWorld();
+		lua_pushlightuserdata(State, GEngine);
+		return 1;
 	}
 
 	// _cpp_create_default_subobject(Object, Class.CameraComponent, FName)
@@ -361,6 +371,7 @@ namespace TLua
 		lua_register(State, "_cpp_load_class", CppLoadClass);
 		lua_register(State, "_cpp_create_default_subobject", CppCreateDefaultSubobject);
 		lua_register(State, "_cpp_new_object", CppNewObject);
+		lua_register(State, "_cpp_get_engine", CppGetEngine);
 
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
 
