@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "TLuaRootObject.h"
+
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "TLuaGameInstanceSubsystem.generated.h"
@@ -18,4 +20,7 @@ public:
 	virtual ~UTLuaGameInstanceSubsystem() {}
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
+
+private:
+	UTLuaRootObject* Root;
 };
