@@ -14,9 +14,9 @@ namespace TLua
 		LuaObject(const LuaObject&&) = delete;
 		const LuaObject& operator=(const LuaObject&&) = delete;
 
-		inline LuaObject(UObject* InOwner) : Owner(InOwner)
+		inline LuaObject(UObject* InOwner, bool IsComponent = false) : Owner(InOwner)
 		{
-			TLua::Call("_lua_bind_obj", (void*)Owner, (void*)Owner->GetClass());
+			TLua::Call("_lua_bind_obj", (void*)Owner, (void*)Owner->GetClass(), IsComponent);
 		}
 
 		inline ~LuaObject()
