@@ -131,4 +131,10 @@ namespace TLua
 	{
 		using ValueType = FScriptDelegate*;
 	};
+
+	template <>
+	struct PropertyInfo<FMulticastDelegateProperty>
+	{
+		using ValueType = FMulticastScriptDelegate*;
+	};
 }

@@ -37,10 +37,20 @@ namespace TLua
 		Result = new Processor<FArrayProperty, void>(Property);
 	}
 
-	class DelegateProcessor : public DelegateProcessorBase
+	void ProcessorVisitor::Visit(FDelegateProperty* Property)
+	{
+		Result = new TDelegateProcessor<FDelegateProperty>(Property);
+	}
+
+	void ProcessorVisitor::Visit(FMulticastDelegateProperty* Property)
+	{
+		Result = new TDelegateProcessor<FMulticastDelegateProperty>(Property);
+	}
+
+	class SingleDelegateAccessor : public DelegateAccessor
 	{
 	public:
-		DelegateProcessor(FDelegateProperty* InProperty) 
+		SingleDelegateAccessor(FDelegateProperty* InProperty)
 			: Function(InProperty->SignatureFunction), Property(InProperty)
 		{
 		}
@@ -62,13 +72,38 @@ namespace TLua
 		FDelegateProperty* Property;
 	};
 
-	DelegateProcessorBase* CreateDelegateProcessor(FDelegateProperty* Property)
+	class MulticastDelegateAccessor : public DelegateAccessor
 	{
-		return new DelegateProcessor(Property);
+	public:
+		MulticastDelegateAccessor(FMulticastDelegateProperty* InProperty)
+			: Function(InProperty->SignatureFunction), Property(InProperty)
+		{
+		}
+
+		virtual int Execute(void* Self, lua_State* State, int ArgStartIndex) override
+		{
+			FMulticastScriptDelegate* Delegate = (FMulticastScriptDelegate*)Self;
+
+			void* Parameters = (void*)FMemory_Alloca(Property->SignatureFunction->ParmsSize);
+			Function.FillParameters(Parameters, State, ArgStartIndex);
+
+			Delegate->ProcessMulticastDelegate<UObject>(Parameters);
+
+			return Function.FreeParameter(Parameters, State);
+		}
+
+	private:
+		FunctionContext Function;
+		FMulticastDelegateProperty* Property;
+	};
+
+	DelegateAccessor* CreateDelegateAccessor(FDelegateProperty* Property)
+	{
+		return new SingleDelegateAccessor(Property);
 	}
 
-	DelegateProcessorBase* CreateMulticastDelegateProcessor(FMulticastDelegateProperty* Property)
+	DelegateAccessor* CreateDelegateAccessor(FMulticastDelegateProperty* Property)
 	{
-		return nullptr;
+		return new MulticastDelegateAccessor(Property);
 	}
 }

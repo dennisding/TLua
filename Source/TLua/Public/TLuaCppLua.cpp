@@ -351,9 +351,9 @@ namespace TLua
 	int CppDelegateExecute(lua_State* State)
 	{
 		FScriptDelegate* Delegate = (FScriptDelegate*)lua_touserdata(State, 1);
-		DelegateProcessorBase* Processor = (DelegateProcessorBase*)lua_touserdata(State, 2);
+		DelegateAccessor* Accessor = (DelegateAccessor*)lua_touserdata(State, 2);
 
-		return Processor->Execute(Delegate, State, 3);
+		return Accessor->Execute(Delegate, State, 3);
 	}
 
 	void RegisterCppLua()

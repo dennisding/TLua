@@ -6,6 +6,7 @@
 // DECLARE_DELEGATE(FTestDelegate);
 DECLARE_DYNAMIC_DELEGATE(FTestDelegate);
 DECLARE_DYNAMIC_DELEGATE_OneParam(FOneDelegate, int, IntValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOneMultiDelegate, int, IntValue);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class TLUA_API UTLuaRootObject : public UObject
@@ -25,6 +26,9 @@ public:
 
 	UPROPERTY()
 	FOneDelegate OneDelegate;
+
+	UPROPERTY()
+	FOneMultiDelegate OneMultiDelegate;
 private:
 };
 
