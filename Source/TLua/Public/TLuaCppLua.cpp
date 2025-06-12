@@ -13,9 +13,6 @@
 
 namespace TLua
 {
-	//class FunctionContext
-	//{
-	//public:
 	FunctionContext::FunctionContext(UFunction* InFunction) 
 		: Function(InFunction), Return(nullptr)
 	{
@@ -26,40 +23,6 @@ namespace TLua
 	// _cpp_object_call(Object, Context, args...)
 	int FunctionContext::Call(lua_State* State, UObject* Object)
 	{
-		//// setup parameter
-		//void* ParameterMemory = (void*)FMemory_Alloca(Function->ParmsSize);
-		//FMemory::Memzero(ParameterMemory, Function->ParmsSize);
-
-		//int LuaTop = LuaGetTop(State);
-		//for (int Index = 0; Index < ParameterProcessors.Num(); ++Index) {
-		//	// _cpp_object_call_fun(self, fun_context, args...)
-		//	PropertyProcessor* Processor = ParameterProcessors[Index];
-
-		//	int LuaIndex = Index + 3;
-		//	if (LuaIndex <= LuaTop) {
-		//		Processor->FromLua(State, LuaIndex, ParameterMemory);
-		//	}
-		//	else {
-		//		Processor->Property->InitializeValue_InContainer(ParameterMemory);
-		//	}
-		//}
-
-		//// call the function
-		//Object->ProcessEvent(Function, ParameterMemory);
-
-		//// free parameter
-		//for (PropertyProcessor* Processor : ParameterProcessors) {
-		//	Processor->DestroyValue_InContainer(ParameterMemory);
-		//}
-
-		//// process return
-		//if (Return) {
-		//	Return->ToLua(State, ParameterMemory);
-		//	Return->DestroyValue_InContainer(ParameterMemory);
-		//	return 1;
-		//}
-
-		//return 0;
 		void* Parameters = (void*)FMemory_Alloca(Function->ParmsSize);
 		FillParameters(Parameters, State, 3);
 
@@ -77,7 +40,7 @@ namespace TLua
 			// _cpp_object_call_fun(self, fun_context, args...)
 			PropertyProcessor* Processor = ParameterProcessors[Index];
 
-			int LuaIndex = Index + 3;
+			int LuaIndex = Index + ArgStartIndex;
 			if (LuaIndex <= LuaTop) {
 				Processor->FromLua(State, LuaIndex, Parameters);
 			}
@@ -127,12 +90,6 @@ namespace TLua
 
 		Return = CreatePropertyProcessor(Property);
 	}
-
-	//private:
-	//	UFunction* Function;
-	//	PropertyProcessor* Return;
-	//	ProcessorArray ParameterProcessors;
-	//};
 
 	static int CppStructGetName(lua_State* State)
 	{
@@ -390,64 +347,29 @@ namespace TLua
 		return 1;
 	}
 
-	/*class LuaDelegate
-	{
-	public:
-		virtual ~LuaDelegate() {}
-
-		virtual void Execute(void* Self, lua_State* State, int ArgStartIndex) 
-		{
-			FScriptDelegate* Delegate = (FScriptDelegate*)Self;
-			Delegate->ProcessDelegate<UObject>(nullptr);
-		}
-	};
-
-	class LuaMulticastDelegate : public LuaDelegate
-	{
-	public:
-		virtual ~LuaMulticastDelegate() {}
-
-		virtual void Execute(void* Self, lua_State* State, int ArgStartIndex) override
-		{
-			FMulticastScriptDelegate* Delegate = (FMulticastScriptDelegate*)Self;
-			Delegate->ProcessMulticastDelegate<UObject>(nullptr);
-		}
-	};*/
-
 	// _cpp_delegate_execute(Delegate, ParameterFilter)
 	int CppDelegateExecute(lua_State* State)
 	{
 		FScriptDelegate* Delegate = (FScriptDelegate*)lua_touserdata(State, 1);
 		DelegateProcessorBase* Processor = (DelegateProcessorBase*)lua_touserdata(State, 2);
-//		FillParameters Filler = (FillParameters)lua_touserdata(State, 2);
+
 		return Processor->Execute(Delegate, State, 3);
-
-//		Delegate->ProcessDelegate<UObject>(nullptr);
-
-//		return 0;
-	}
-
-	// _cpp_multi_delegate_cast(Delegate, ParameterFilter)
-	int CppMulticastDelegateExecute(lua_State* State)
-	{
-		FMulticastScriptDelegate* Delegate = (FMulticastScriptDelegate*)lua_touserdata(State, 1);
-
-		// process the argument
-		Delegate->ProcessMulticastDelegate<UObject>(nullptr);
-		return 0;
 	}
 
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
 
+		// global use
 		lua_register(State, "_cpp_load_class", CppLoadClass);
 		lua_register(State, "_cpp_create_default_subobject", CppCreateDefaultSubobject);
 		lua_register(State, "_cpp_new_object", CppNewObject);
 		lua_register(State, "_cpp_get_engine", CppGetEngine);
 
+		// struct
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
 
+		// object
 		lua_register(State, "_cpp_object_get_name", CppObjectGetName);
 		lua_register(State, "_cpp_object_get_attrs", CppObjectGetAttrs);
 		lua_register(State, "_cpp_object_get_type", CppObjectGetType);
@@ -462,6 +384,7 @@ namespace TLua
 		lua_register(State, "_cpp_enum_get_value", CppEnumGetValue);
 		lua_register(State, "_cpp_enum_get_name", CppEnumGetName);
 
+		// delegate
 		lua_register(State, "_cpp_delegate_execute", CppDelegateExecute);
 	}
 }
