@@ -481,4 +481,17 @@ namespace TLua
 			TypeInfo<UObject*>::ToLua(State, Value.Get());
 		}
 	};
+
+	template <>
+	struct TypeInfo<FScriptDelegate*>
+	{
+
+		inline static void ToLua(lua_State* State, const FScriptDelegate* Delegate)
+		{
+			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
+			LuaGetGlobal(State, "_lua_get_delegate");
+			LuaPushUserData(State, (void*)Delegate);
+			LuaPCall(State, 2, 1);
+		}
+	};
 }

@@ -19,6 +19,12 @@ namespace TLua
 			TLua::Call("_lua_bind_obj", (void*)Owner, (void*)Owner->GetClass(), IsComponent);
 		}
 
+		inline void Bind(UObject* InOwner, bool IsComponent = false)
+		{
+			Owner = InOwner;
+			TLua::Call("_lua_bind_obj", (void*)Owner, (void*)Owner->GetClass(), IsComponent);
+		}
+
 		inline ~LuaObject()
 		{
 			TLua::Call("_lua_unbind_obj", (void*)Owner);

@@ -13,83 +13,126 @@
 
 namespace TLua
 {
-	class FunctionContext
+	//class FunctionContext
+	//{
+	//public:
+	FunctionContext::FunctionContext(UFunction* InFunction) 
+		: Function(InFunction), Return(nullptr)
 	{
-	public:
-		FunctionContext(UFunction* InFunction) : Function(InFunction), Return(nullptr)
-		{
-			ProcessParameterProperty();
-			ProcessReturnProperty();
+		ProcessParameterProperty();
+		ProcessReturnProperty();
+	}
+
+	// _cpp_object_call(Object, Context, args...)
+	int FunctionContext::Call(lua_State* State, UObject* Object)
+	{
+		//// setup parameter
+		//void* ParameterMemory = (void*)FMemory_Alloca(Function->ParmsSize);
+		//FMemory::Memzero(ParameterMemory, Function->ParmsSize);
+
+		//int LuaTop = LuaGetTop(State);
+		//for (int Index = 0; Index < ParameterProcessors.Num(); ++Index) {
+		//	// _cpp_object_call_fun(self, fun_context, args...)
+		//	PropertyProcessor* Processor = ParameterProcessors[Index];
+
+		//	int LuaIndex = Index + 3;
+		//	if (LuaIndex <= LuaTop) {
+		//		Processor->FromLua(State, LuaIndex, ParameterMemory);
+		//	}
+		//	else {
+		//		Processor->Property->InitializeValue_InContainer(ParameterMemory);
+		//	}
+		//}
+
+		//// call the function
+		//Object->ProcessEvent(Function, ParameterMemory);
+
+		//// free parameter
+		//for (PropertyProcessor* Processor : ParameterProcessors) {
+		//	Processor->DestroyValue_InContainer(ParameterMemory);
+		//}
+
+		//// process return
+		//if (Return) {
+		//	Return->ToLua(State, ParameterMemory);
+		//	Return->DestroyValue_InContainer(ParameterMemory);
+		//	return 1;
+		//}
+
+		//return 0;
+		void* Parameters = (void*)FMemory_Alloca(Function->ParmsSize);
+		FillParameters(Parameters, State, 3);
+
+		Object->ProcessEvent(Function, Parameters);
+
+		return FreeParameter(Parameters, State);
+	}
+
+	void FunctionContext::FillParameters(void* Parameters, lua_State* State, int ArgStartIndex)
+	{
+		FMemory::Memzero(Parameters, Function->ParmsSize);
+
+		int LuaTop = LuaGetTop(State);
+		for (int Index = 0; Index < ParameterProcessors.Num(); ++Index) {
+			// _cpp_object_call_fun(self, fun_context, args...)
+			PropertyProcessor* Processor = ParameterProcessors[Index];
+
+			int LuaIndex = Index + 3;
+			if (LuaIndex <= LuaTop) {
+				Processor->FromLua(State, LuaIndex, Parameters);
+			}
+			else {
+				Processor->Property->InitializeValue_InContainer(Parameters);
+			}
+		}
+	}
+
+	int FunctionContext::FreeParameter(void* Parameters, lua_State* State)
+	{
+		// free parameter
+		for (PropertyProcessor* Processor : ParameterProcessors) {
+			Processor->DestroyValue_InContainer(Parameters);
 		}
 
-		// _cpp_object_call(Object, Context, args...)
-		int Call(lua_State* State, UObject* Object)
-		{
-			// setup parameter
-			void* ParameterMemory = (void*)FMemory_Alloca(Function->ParmsSize);
-			FMemory::Memzero(ParameterMemory, Function->ParmsSize);
-
-			int LuaTop = LuaGetTop(State);
-			for (int Index = 0; Index < ParameterProcessors.Num(); ++Index) {
-				// _cpp_object_call_fun(self, fun_context, args...)
-				PropertyProcessor* Processor = ParameterProcessors[Index];
-
-				int LuaIndex = Index + 3;
-				if (LuaIndex <= LuaTop) {
-					Processor->FromLua(State, LuaIndex, ParameterMemory);
-				}
-				else {
-					Processor->Property->InitializeValue_InContainer(ParameterMemory);
-				}
-			}
-
-			// call the function
-			Object->ProcessEvent(Function, ParameterMemory);
-
-			// free parameter
-			for (PropertyProcessor* Processor : ParameterProcessors) {
-				Processor->DestroyValue_InContainer(ParameterMemory);
-			}
-
-			// process return
-			if (Return) {
-				Return->ToLua(State, ParameterMemory);
-				Return->DestroyValue_InContainer(ParameterMemory);
-				return 1;
-			}
-
-			return 0;
+		// process return
+		if (Return) {
+			Return->ToLua(State, Parameters);
+			Return->DestroyValue_InContainer(Parameters);
+			return 1;
 		}
 
-	private:
-		void ProcessParameterProperty()
-		{
-			for (TFieldIterator<FProperty> It(Function); It; ++It) {
-				FProperty* Property = *It;
+		return 0;
+	}
 
-				if (Property->HasAnyPropertyFlags(CPF_ReturnParm)) {
-					continue;
-				}
-				// add the processor
-				ParameterProcessors.Add(CreatePropertyProcessor(Property));
+//	private:
+	void FunctionContext::ProcessParameterProperty()
+	{
+		for (TFieldIterator<FProperty> It(Function); It; ++It) {
+			FProperty* Property = *It;
+
+			if (Property->HasAnyPropertyFlags(CPF_ReturnParm)) {
+				continue;
 			}
+			// add the processor
+			ParameterProcessors.Add(CreatePropertyProcessor(Property));
+		}
+	}
+
+	void FunctionContext::ProcessReturnProperty()
+	{
+		FProperty* Property = Function->GetReturnProperty();
+		if (!Property) {
+			return;
 		}
 
-		void ProcessReturnProperty()
-		{
-			FProperty* Property = Function->GetReturnProperty();
-			if (!Property) {
-				return;
-			}
+		Return = CreatePropertyProcessor(Property);
+	}
 
-			Return = CreatePropertyProcessor(Property);
-		}
-
-	private:
-		UFunction* Function;
-		PropertyProcessor* Return;
-		ProcessorArray ParameterProcessors;
-	};
+	//private:
+	//	UFunction* Function;
+	//	PropertyProcessor* Return;
+	//	ProcessorArray ParameterProcessors;
+	//};
 
 	static int CppStructGetName(lua_State* State)
 	{
@@ -347,6 +390,53 @@ namespace TLua
 		return 1;
 	}
 
+	/*class LuaDelegate
+	{
+	public:
+		virtual ~LuaDelegate() {}
+
+		virtual void Execute(void* Self, lua_State* State, int ArgStartIndex) 
+		{
+			FScriptDelegate* Delegate = (FScriptDelegate*)Self;
+			Delegate->ProcessDelegate<UObject>(nullptr);
+		}
+	};
+
+	class LuaMulticastDelegate : public LuaDelegate
+	{
+	public:
+		virtual ~LuaMulticastDelegate() {}
+
+		virtual void Execute(void* Self, lua_State* State, int ArgStartIndex) override
+		{
+			FMulticastScriptDelegate* Delegate = (FMulticastScriptDelegate*)Self;
+			Delegate->ProcessMulticastDelegate<UObject>(nullptr);
+		}
+	};*/
+
+	// _cpp_delegate_execute(Delegate, ParameterFilter)
+	int CppDelegateExecute(lua_State* State)
+	{
+		FScriptDelegate* Delegate = (FScriptDelegate*)lua_touserdata(State, 1);
+		DelegateProcessorBase* Processor = (DelegateProcessorBase*)lua_touserdata(State, 2);
+//		FillParameters Filler = (FillParameters)lua_touserdata(State, 2);
+		return Processor->Execute(Delegate, State, 3);
+
+//		Delegate->ProcessDelegate<UObject>(nullptr);
+
+//		return 0;
+	}
+
+	// _cpp_multi_delegate_cast(Delegate, ParameterFilter)
+	int CppMulticastDelegateExecute(lua_State* State)
+	{
+		FMulticastScriptDelegate* Delegate = (FMulticastScriptDelegate*)lua_touserdata(State, 1);
+
+		// process the argument
+		Delegate->ProcessMulticastDelegate<UObject>(nullptr);
+		return 0;
+	}
+
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
@@ -371,5 +461,7 @@ namespace TLua
 		lua_register(State, "_cpp_enum_get_type", CppEnumGetType);
 		lua_register(State, "_cpp_enum_get_value", CppEnumGetValue);
 		lua_register(State, "_cpp_enum_get_name", CppEnumGetName);
+
+		lua_register(State, "_cpp_delegate_execute", CppDelegateExecute);
 	}
 }

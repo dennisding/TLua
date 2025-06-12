@@ -46,6 +46,16 @@ namespace TLua
 
 	PropertyProcessor* CreatePropertyProcessor(FProperty* Property);
 
+	class DelegateProcessorBase
+	{
+	public:
+		virtual ~DelegateProcessorBase() {}
+		virtual int Execute(void* Self, lua_State* State, int ArgStartIndex) = 0;
+	private:
+	};
+
+	DelegateProcessorBase* CreateDelegateProcessor(FDelegateProperty* Property);
+
 	template <typename PropertyType, typename ValueType = PropertyInfo<PropertyType>::ValueType>
 	class Processor : public PropertyProcessor
 	{
@@ -189,37 +199,46 @@ namespace TLua
 		PropertyProcessor* InnerProcessor;
 	};
 
-	//template <typename ValueType>
-	//class Processor<FObjectProperty, ValueType> : public PropertyProcessor
-	//{
-	//public:
-	//	virtual ~Processor() {}
-	//	Processor(FObjectProperty* InProperty)
-	//		: PropertyProcessor(InProperty), Property(InProperty)
-	//	{
-	//	}
 
-	//	virtual void FromLua(lua_State* State, int Index, void* Container) override
-	//	{
-	//		//ValueType* ValuePtr = Property->ContainerPtrToValuePtr<ValueType>(Container);
-	//		//*ValuePtr = TypeInfo<ValueType>::FromLua(State, Index);
+	template <typename ValueType>
+	class Processor<FDelegateProperty, ValueType> : public PropertyProcessor
+	{
+	public:
+		virtual ~Processor() {}
+		Processor(FDelegateProperty* InProperty)
+			: PropertyProcessor(InProperty), Property(InProperty)
+		{
+			InnerProcessor = CreateDelegateProcessor(Property);
+		}
 
-	//		Property->SetPropertyValue_InContainer(Container,
-	//			TypeInfo<ValueType>::FromLua(State, Index));
-	//	}
+		virtual void FromLua(lua_State* State, int Index, void* Container) override
+		{
+			//Property->SetPropertyValue_InContainer(Container,
+			//	TypeInfo<ValueType>::FromLua(State, Index));
+		}
 
-	//	virtual void ToLua(lua_State* State, const void* Container) override
-	//	{
-	//		//const ValueType* ValuePtr = Property->ContainerPtrToValuePtr<ValueType>(Container);
-	//		//TypeInfo<ValueType>::ToLua(State, *ValuePtr);
-	//		auto Object = Property->GetObjectPropertyValue_InContainer(Container);
-	//		//auto Ptr = Property->GetPropertyValue_InContainer(Container);
-	//		TypeInfo<ValueType>::ToLua(State, (ValueType)Object);
-	//	}
+		//virtual void ToLua(lua_State* State, const void* Container) override
+		//{
+		//	auto* DelegatePtr = Property->GetPropertyValuePtr_InContainer(Container);
 
-	//private:
-	//	FObjectProperty* Property;
-	//};
+		//	FScriptDelegate& DelegateInstance = *((FScriptDelegate*)DelegatePtr);
+		//	PushValue(State, &DelegateInstance);
+		//}
+
+		virtual void ToLua(lua_State* State, const void* Container)
+		{
+			auto* DelegatePtr = Property->GetPropertyValuePtr_InContainer(Container);
+			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
+			LuaGetGlobal(State, "_lua_get_delegate");
+			LuaPushUserData(State, (void*)DelegatePtr);
+			LuaPushUserData(State, (void*)InnerProcessor);
+			LuaPCall(State, 2, 1);
+		}
+
+	private:
+		DelegateProcessorBase* InnerProcessor;
+		FDelegateProperty* Property;
+	};
 
 	template <typename DispatcherType>
 	void DispatchProperty(FProperty* Property, DispatcherType& Dispatcher)
@@ -272,6 +291,9 @@ namespace TLua
 		}
 		else if (auto* ArrayProperty = CastField<FArrayProperty>(Property)) {
 			Dispatcher.Visit(ArrayProperty);
+		}
+		else if (auto* DelegateProperty = CastField<FDelegateProperty>(Property)) {
+			Dispatcher.Visit(DelegateProperty);
 		}
 		else {
 			UE_LOG(Lua, Error, TEXT("unhandled attribute:%s<%s>"), 

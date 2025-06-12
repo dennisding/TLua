@@ -125,4 +125,10 @@ namespace TLua
 		// using ValueType = ???
 		using ValueType = int32;
 	};
+
+	template <>
+	struct PropertyInfo<FDelegateProperty>
+	{
+		using ValueType = FScriptDelegate*;
+	};
 }
