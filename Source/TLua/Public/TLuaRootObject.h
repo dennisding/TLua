@@ -1,7 +1,26 @@
 #pragma once
 
+#include "Lua/lua.hpp"
+
 #include "CoreMinimal.h"
 #include "TLuaRootObject.generated.h"
+
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
+class TLUA_API UTLuaCallback : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	UTLuaCallback();
+	~UTLuaCallback();
+
+	void Bind(int AbsIndex);
+
+	UFUNCTION()
+	void Callback();
+
+public:
+};
 
 // DECLARE_DELEGATE(FTestDelegate);
 DECLARE_DYNAMIC_DELEGATE(FTestDelegate);
@@ -30,13 +49,4 @@ public:
 	UPROPERTY()
 	FOneMultiDelegate OneMultiDelegate;
 private:
-};
-
-
-UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class TLUA_API UTLuaActorCallback : public UObject
-{
-	GENERATED_BODY()
-
-public:
 };

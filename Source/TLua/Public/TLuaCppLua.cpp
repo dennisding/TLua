@@ -347,13 +347,23 @@ namespace TLua
 		return 1;
 	}
 
-	// _cpp_delegate_execute(Delegate, ParameterFilter)
+	// _cpp_delegate_execute(Delegate, Accessor)
 	int CppDelegateExecute(lua_State* State)
 	{
 		FScriptDelegate* Delegate = (FScriptDelegate*)lua_touserdata(State, 1);
 		DelegateAccessor* Accessor = (DelegateAccessor*)lua_touserdata(State, 2);
 
 		return Accessor->Execute(Delegate, State, 3);
+	}
+
+	// _cpp_delegate_bind(Delegate, Accessor, lua_fun)
+	int CppDelegateBind(lua_State* State)
+	{
+		FScriptDelegate* Delegate = (FScriptDelegate*)lua_touserdata(State, 1);
+		DelegateAccessor* Accessor = (DelegateAccessor*)lua_touserdata(State, 2);
+		Accessor->Bind(Delegate, State, 3);
+
+		return 0;
 	}
 
 	void RegisterCppLua()
@@ -386,5 +396,6 @@ namespace TLua
 
 		// delegate
 		lua_register(State, "_cpp_delegate_execute", CppDelegateExecute);
+		lua_register(State, "_cpp_delegate_bind", CppDelegateBind);
 	}
 }

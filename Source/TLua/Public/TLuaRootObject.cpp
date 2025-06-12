@@ -4,6 +4,38 @@
 #include "TLua.h"
 #include "TLua.hpp"
 
+UTLuaCallback::UTLuaCallback()
+{
+}
+
+UTLuaCallback::~UTLuaCallback()
+{
+	check(IsInGameThread());
+
+	lua_State* State = TLua::GetLuaState();
+	lua_pushlightuserdata(State, this);
+	lua_pushnil(State);
+	lua_settable(State, LUA_REGISTRYINDEX);
+}
+
+void UTLuaCallback::Bind(int AbsIndex)
+{
+	lua_State* State = TLua::GetLuaState();
+	lua_pushlightuserdata(State, this);
+	lua_pushvalue(State, AbsIndex);
+	lua_settable(State, LUA_REGISTRYINDEX);
+}
+
+void UTLuaCallback::Callback()
+{
+	lua_State* State = TLua::GetLuaState();
+	lua_getglobal(State, TLUA_TRACE_CALL_NAME);
+	lua_pushlightuserdata(State, this);
+	lua_gettable(State, LUA_REGISTRYINDEX);
+
+	lua_pcall(State, 1, 0, 0);
+}
+
 UTLuaRootObject::UTLuaRootObject()
 {
 	Delegate.BindUFunction(this, TEXT("SayHello"));

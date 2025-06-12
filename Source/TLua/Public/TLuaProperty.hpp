@@ -51,6 +51,7 @@ namespace TLua
 	public:
 		virtual ~DelegateAccessor() {}
 		virtual int Execute(void* Self, lua_State* State, int ArgStartIndex) = 0;
+		virtual void Bind(void* Self, lua_State* State, int Index) = 0;
 	private:
 	};
 

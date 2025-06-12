@@ -2,6 +2,7 @@
 #include "TLuaProperty.hpp"
 
 #include "TLuaCppLua.hpp"
+#include "TLuaRootObject.h"
 
 namespace TLua
 {
@@ -67,6 +68,15 @@ namespace TLua
 			return Function.FreeParameter(Parameters, State);
 		}
 
+		virtual void Bind(void* Self, lua_State* State, int AbsIndex) override
+		{
+			FScriptDelegate* Delegate = (FScriptDelegate*)Self;
+
+			UTLuaCallback* Object = NewObject<UTLuaCallback>();
+			Object->Bind(AbsIndex);
+			Delegate->BindUFunction(Object, TEXT("Callback"));
+		}
+
 	private:
 		FunctionContext Function;
 		FDelegateProperty* Property;
@@ -90,6 +100,11 @@ namespace TLua
 			Delegate->ProcessMulticastDelegate<UObject>(Parameters);
 
 			return Function.FreeParameter(Parameters, State);
+		}
+
+		virtual void Bind(void* Self, lua_State* State, int Index) override
+		{
+
 		}
 
 	private:
