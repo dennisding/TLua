@@ -51,33 +51,28 @@ class FCallbackMgr
 
 	public:
 		inline Callback() : Key(nullptr){}
-		//Callback(const Callback&) = delete;
-		//Callback(const Callback&&) = delete;
-		//void operator=(const Callback&) = delete;
-		//void operator=(const Callback&&) = delete;
 
 		~Callback();
 		void Bind();
 		void Call();
 	};
+
+	using CallbackMap = std::multimap<double, Callback>;
 public:
 	explicit FCallbackMgr(int NextId = 100);
 
 	// add_callback(..., duration, fun)
 	int AddCallback(lua_State* State);
+	void Cancel(int Handle);
 	void Clear();
 	void Tick(float Delta);
 
 private:
 	int NextId;
 	double CurrentTime;
-	std::multimap<double, Callback> Callbacks;
+//	std::multimap<double, Callback> Callbacks;
+	CallbackMap Callbacks;
 };
-
-// DECLARE_DELEGATE(FTestDelegate);
-DECLARE_DYNAMIC_DELEGATE(FTestDelegate);
-DECLARE_DYNAMIC_DELEGATE_OneParam(FOneDelegate, int, IntValue);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOneMultiDelegate, int, IntValue);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class TLUA_API UTLuaRootObject : public UObject
@@ -87,25 +82,10 @@ public:
 	UTLuaRootObject();
 
 	int AddCallback(lua_State* State);
+	void CancelCallback(int Handle);
 	void Activate();
 	void Tick(float Delta);
 
-public:
-	// test code gose here
-	UFUNCTION()
-	void SayHello();
-
-	UFUNCTION()
-	void OneReturn(int IntValue);
-
-	UPROPERTY()
-	FTestDelegate Delegate;
-
-	UPROPERTY()
-	FOneDelegate OneDelegate;
-
-	UPROPERTY()
-	FOneMultiDelegate OneMultiDelegate;
 private:
 	FCallbackMgr CallbackMgr;
 	FRootTickFunction TickFunction;

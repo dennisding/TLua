@@ -108,8 +108,6 @@ namespace TLua
 
 			UTLuaCallback* Object = NewObject<UTLuaCallback>();
 			Object->Bind(AbsIndex);
-		//	Delegate->BindUFunction(Object, TEXT("Callback"));
-			// OneMultiDelegate.AddDynamic(this, &UTLuaRootObject::OneReturn);
 
 			FScriptDelegate InDelegate;
 			InDelegate.BindUFunction(Object, TEXT("Callback"));

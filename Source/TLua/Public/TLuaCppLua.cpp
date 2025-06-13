@@ -335,6 +335,16 @@ namespace TLua
 		return 1;
 	}
 
+	// _cpp_engine_cancel_callback(root_object, handle)
+	int CppEngineCancelCallback(lua_State* State)
+	{
+		UTLuaRootObject* Root = (UTLuaRootObject*)lua_touserdata(State, 1);
+		int Handle = lua_tointeger(State, 2);
+		Root->CancelCallback(Handle);
+
+		return 0;
+	}
+
 	// _cpp_create_default_subobject(Object, Class.CameraComponent, FName)
 	int CppCreateDefaultSubobject(lua_State* State)
 	{
@@ -389,6 +399,7 @@ namespace TLua
 		// engine
 		lua_register(State, "_cpp_get_engine", CppGetEngine);
 		lua_register(State, "_cpp_engine_callback", CppEngineCallback);
+		lua_register(State, "_cpp_engine_cancel_callback", CppEngineCancelCallback);
 
 		// struct
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
