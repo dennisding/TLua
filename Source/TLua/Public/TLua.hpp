@@ -11,3 +11,4 @@
 #include "TLuaTypes.hpp"
 #include "TLuaScriptComponent.h"
 #include "TLuaObject.hpp"
+#include "TLuaBinder.h"
