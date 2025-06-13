@@ -12,6 +12,7 @@ void UTLuaGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection
 {
 	Root = NewObject<UTLuaRootObject>(this->GetGameInstance());
 	Root->AddToRoot();
+	Root->Activate();
 	TLua::Call("game_start", (UObject*)Root);
 }
 void UTLuaGameInstanceSubsystem::Deinitialize()

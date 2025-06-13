@@ -7,6 +7,8 @@
 #include "TLuaTypes.hpp"
 #include "TLuaProperty.hpp"
 
+#include "TLuaRootObject.h"
+
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "UObject/UObjectGlobals.h"
@@ -317,10 +319,19 @@ namespace TLua
 		return 0;
 	}
 
-	// _cpp_get_engine
+	// _cpp_get_engine()
 	int CppGetEngine(lua_State* State)
 	{
 		lua_pushlightuserdata(State, GEngine);
+		return 1;
+	}
+
+	// _cpp_engine_callback(root_object, delta, fun)
+	int CppEngineCallback(lua_State* State)
+	{
+		UTLuaRootObject* Root = (UTLuaRootObject*)lua_touserdata(State, 1);
+		int Handler = Root->AddCallback(State);
+		lua_pushinteger(State, Handler);
 		return 1;
 	}
 
@@ -374,7 +385,10 @@ namespace TLua
 		lua_register(State, "_cpp_load_class", CppLoadClass);
 		lua_register(State, "_cpp_create_default_subobject", CppCreateDefaultSubobject);
 		lua_register(State, "_cpp_new_object", CppNewObject);
+
+		// engine
 		lua_register(State, "_cpp_get_engine", CppGetEngine);
+		lua_register(State, "_cpp_engine_callback", CppEngineCallback);
 
 		// struct
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
