@@ -7,7 +7,6 @@
 #include <type_traits>
 
 #include "TLuaImp.hpp"
-#include "TLuaUStructMgr.hpp"
 #include "Lua/lua.hpp"
 #include "TLuaTypeInfo.hpp"
 

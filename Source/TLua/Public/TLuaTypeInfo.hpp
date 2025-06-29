@@ -3,8 +3,6 @@
 #include "Lua/lua.hpp"
 #include "TLuaImp.hpp"
 
-#include "TLuaUStructMgr.hpp"
-
 namespace TLua
 {
 	// <Type, is_struct, is_actorcomponent, is_actor>

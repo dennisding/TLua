@@ -92,10 +92,10 @@ namespace TLua
 		virtual ~Processor() {}
 
 		Processor(FStructProperty* InProperty) 
-			: PropertyProcessor(InProperty), Property(InProperty), StructProcessor(nullptr)
+			: PropertyProcessor(InProperty), Property(InProperty)//, StructProcessor(nullptr)
 		{
-			UStruct* Struct = InProperty->Struct;
-			StructProcessor = UStructProcessorMgr::Get(Struct);
+			//UStruct* Struct = InProperty->Struct;
+			//StructProcessor = UStructProcessorMgr::Get(Struct);
 		}
 
 		virtual void FromLua(lua_State* State, int Index, void* Container) override
@@ -128,7 +128,7 @@ namespace TLua
 
 	private:
 		FStructProperty* Property;
-		StructTypeProcessor* StructProcessor;
+//		StructTypeProcessor* StructProcessor;
 	};
 
 	template <>
