@@ -93,17 +93,6 @@ namespace TLua
 		Return = CreatePropertyProcessor(Property);
 	}
 
-	static int CppStructGetName(lua_State* State)
-	{
-		UStruct* Struct = (UStruct*)GetValue<void*>(State, 1);
-
-		FString Name = Struct->GetName();
-		FTCHARToUTF8 Convert(Name);
-		lua_pushlstring(State, (const char*)Convert.Get(), Convert.Length());
-
-		return 1;
-	}
-
 	int CppObjectGetName(lua_State* State)
 	{
 		UClass* Object = (UClass*)lua_touserdata(State, 1);
@@ -199,7 +188,7 @@ namespace TLua
 		return 0; // nil, nil, nil
 	}
 
-	// _lua_object_create(parent, name, type)
+	// _cpp_object_create(parent, name, type)
 	int CppObjectCreate(lua_State* State)
 	{
 		AActor* Actor = GetValue<AActor*>(State, 1);
@@ -232,6 +221,43 @@ namespace TLua
 		UObject* Object = (UObject*)lua_touserdata(State, 1);
 		Object->Rename(nullptr, nullptr, REN_DontCreateRedirectors);
 		return 0;
+	}
+
+	// _cpp_struct_get_name(ctype) -> name
+	static int CppStructGetName(lua_State* State)
+	{
+//		UStruct* Struct = (UStruct*)GetValue<void*>(State, 1);
+		UScriptStruct* Struct = (UScriptStruct*)lua_touserdata(State, 1);
+
+		FString Name = Struct->GetName();
+		FTCHARToUTF8 Convert(Name);
+		lua_pushlstring(State, (const char*)Convert.Get(), Convert.Length());
+
+		return 1;
+	}
+
+	// _cpp_struct_get_info(ctype) -> is_property, getter, setter
+	int CppStructGetInfo(lua_State* State)
+	{
+		UScriptStruct* Struct = (UScriptStruct*)lua_touserdata(State, 1);
+		FName Name(lua_tostring(State, 2));
+
+		FProperty* Property = Struct->FindPropertyByName(Name);
+		if (Property) {
+			SetupPropertyInfo(State, Property);
+			return 3; // property, getter, setter
+		}
+
+		UFunction* Function = Struct->FindFunction(Name);
+		if (Function) {
+			lua_pushnil(State);
+			// every UFunction have only one context at most
+			// so let the memory free.
+			FunctionContext* Context = new FunctionContext(Function);
+			lua_pushlightuserdata(State, Context);
+			return 2; // is_property, FunctionContext
+		}
+		return 0; // nil, nil, nil
 	}
 
 	// _cpp_enum_get_type_name(ctype)
@@ -387,9 +413,26 @@ namespace TLua
 		return 0;
 	}
 
+	// _cpp_prepare_blueprint_libs
+	int CppPrepareFunctionLibs(lua_State* State)
+	{
+		TArray<UClass*> Childs;
+		GetDerivedClasses(UBlueprintFunctionLibrary::StaticClass(), Childs);
+		for (UClass* Child : Childs) {
+			FTCHARToUTF8 Convert(Child->GetName());
+			std::string Name(Convert.Get(), Convert.Length());
+			Call("_lua_add_function_lib", Name, (void*)Child);
+		}
+
+		return 0;
+	}
+
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
+
+		// blueprint function lib
+		lua_register(State, "_cpp_prepare_function_libs", CppPrepareFunctionLibs);
 
 		// global use
 		lua_register(State, "_cpp_load_class", CppLoadClass);
@@ -403,6 +446,7 @@ namespace TLua
 
 		// struct
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
+		lua_register(State, "_cpp_struct_get_info", CppStructGetInfo);
 
 		// object
 		lua_register(State, "_cpp_object_get_name", CppObjectGetName);

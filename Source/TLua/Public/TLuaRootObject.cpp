@@ -60,7 +60,7 @@ void FCallbackMgr::Callback::Call()
 }
 
 // callback manager
-FCallbackMgr::FCallbackMgr(int InNextId) : NextId(InNextId)
+FCallbackMgr::FCallbackMgr(int InNextId) : NextId(InNextId), CurrentTime(0.)
 {
 }
 

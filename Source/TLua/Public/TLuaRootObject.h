@@ -50,7 +50,7 @@ class FCallbackMgr
 		void* Key;
 
 	public:
-		inline Callback() : Key(nullptr){}
+		inline Callback() : Id(0), Key(nullptr){}
 
 		~Callback();
 		void Bind();
