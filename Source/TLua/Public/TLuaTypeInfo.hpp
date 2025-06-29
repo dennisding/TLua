@@ -372,6 +372,41 @@ namespace TLua
 		}
 	};
 	
+	// struct ref
+	template <typename Type>
+	struct TypeInfo<Type*, std::void_t<decltype(TBaseStructure<Type>::Get())>>
+	{
+		using ValueType = Type*;
+		//inline static void FromLua(lua_State* State, int Index, ValueType& OutValue)
+		//{
+		//	if (!LuaIsTable(State, Index)) {
+		//		return;
+		//	}
+
+		//	//StructTypeProcessor* Processor = UStructProcessorMgr::Get<Type>();
+		//	//Processor->FromLua(State, Index, OutValue);
+		//}
+
+		//inline static ValueType FromLua(lua_State* State, int Index)
+		//{
+		//	ValueType TmpValue;
+		//	FromLua(State, Index, TmpValue);
+
+		//	return ValueType;
+		//}
+
+		inline static void ToLua(lua_State* State, const Type* Value)
+		{
+			//StructTypeProcessor* Processor = UStructProcessorMgr::Get<Type>();
+			//Processor->ToLua(State, &Value);
+			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
+			LuaGetGlobal(State, "_lua_get_struct");
+			LuaPushUserData(State, (void*)Value);
+			LuaPushUserData(State, (void*)TBaseStructure<Type>::Get());
+			LuaPCall(State, 3, 1);
+		}
+	};
+
 	// match the struct type
 	// only Struct type have the method StaticStruct
 	template <typename Type>
@@ -383,8 +418,12 @@ namespace TLua
 				return;
 			}
 
-			StructTypeProcessor* Processor = UStructProcessorMgr::Get<Type>();
-			Processor->FromLua(State, Index, OutValue);
+			LuaGetField(State, Index, "_co");
+			Type* Value = (Type*)LuaGetUserData(State, Index);
+			OutValue = *Value;
+
+			//StructTypeProcessor* Processor = UStructProcessorMgr::Get<Type>();
+			//Processor->FromLua(State, Index, OutValue);
 		}
 
 		inline static Type FromLua(lua_State* State, int Index)
@@ -397,45 +436,11 @@ namespace TLua
 
 		inline static void ToLua(lua_State* State, const Type& Value)
 		{
-			StructTypeProcessor* Processor = UStructProcessorMgr::Get<Type>();
-			Processor->ToLua(State, &Value);
-		}
-	};
-	// struct ref
-	template <typename Type>
-	struct TypeInfo<Type*, std::void_t<decltype(TBaseStructure<Type>::Get())>>
-	{
-		using ValueType = Type*;
-		inline static void FromLua(lua_State* State, int Index, ValueType& OutValue)
-		{
-			if (!LuaIsTable(State, Index)) {
-				return;
-			}
-
-			StructTypeProcessor* Processor = UStructProcessorMgr::Get<Type>();
-			Processor->FromLua(State, Index, OutValue);
-		}
-
-		inline static ValueType FromLua(lua_State* State, int Index)
-		{
-			ValueType TmpValue;
-			FromLua(State, Index, TmpValue);
-
-			return ValueType;
-		}
-
-		inline static void ToLua(lua_State* State, const ValueType Value)
-		{
+			TypeInfo<Type*>::ToLua(State, &Value);
 			//StructTypeProcessor* Processor = UStructProcessorMgr::Get<Type>();
 			//Processor->ToLua(State, &Value);
-			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
-			LuaGetGlobal(State, "_lua_get_struct");
-			LuaPushUserData(State, (void*)Value);
-			LuaPushUserData(State, (void*)TBaseStructure<Type>::Get());
-			LuaPCall(State, 3, 1);
 		}
 	};
-
 
 	template <typename Type>
 	struct TypeInfo<Type, 

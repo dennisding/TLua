@@ -15,7 +15,7 @@
 
 namespace TLua
 {
-	FunctionContext::FunctionContext(UFunction* InFunction) 
+	FunctionContext::FunctionContext(UFunction* InFunction)
 		: Function(InFunction), Return(nullptr)
 	{
 		ProcessParameterProperty();
@@ -69,7 +69,7 @@ namespace TLua
 		return 0;
 	}
 
-//	private:
+	//	private:
 	void FunctionContext::ProcessParameterProperty()
 	{
 		for (TFieldIterator<FProperty> It(Function); It; ++It) {
@@ -226,7 +226,7 @@ namespace TLua
 	// _cpp_struct_get_name(ctype) -> name
 	static int CppStructGetName(lua_State* State)
 	{
-//		UStruct* Struct = (UStruct*)GetValue<void*>(State, 1);
+		//		UStruct* Struct = (UStruct*)GetValue<void*>(State, 1);
 		UScriptStruct* Struct = (UScriptStruct*)lua_touserdata(State, 1);
 
 		FString Name = Struct->GetName();
@@ -427,12 +427,46 @@ namespace TLua
 		return 0;
 	}
 
+	template <typename Type>
+	int CppFreeStruct(lua_State* State)
+	{
+		Type* Struct = (Type*)lua_touserdata(State, 1);
+		Struct->~Type();
+		return 0;
+	}
+
+	template <typename Type, typename ...ArgTypes>
+	void MakeStruct(lua_State* State, const ArgTypes... Args)
+	{
+		Type* Buffer = (Type*)lua_newuserdatauv(State, sizeof(Type), 0);
+		new(Buffer) Type(Args...);
+		// set userdata metatable
+		lua_newtable(State);							// type, metatable
+		lua_pushcfunction(State, CppFreeStruct<Type>);	// type, metatable, __gc
+		lua_setfield(State, -2, "__gc");				// type, metatable
+		lua_setmetatable(State, -2);					// type
+	}
+
+	// _cpp_make_vector(x, y, z) -> FVector
+	int CppMakeVector(lua_State* State)
+	{
+		double X = lua_tonumber(State, 1);
+		double Y = lua_tonumber(State, 2);
+		double Z = lua_tonumber(State, 3);
+
+		MakeStruct<FVector>(State, X, Y, Z);
+		lua_pushlightuserdata(State, TBaseStructure<FVector>::Get()); // vector, ctype
+
+		return 2;
+	}
+
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
 
 		// blueprint function lib
 		lua_register(State, "_cpp_prepare_function_libs", CppPrepareFunctionLibs);
+		lua_register(State, "_cpp_make_vector", CppMakeVector);
 
 		// global use
 		lua_register(State, "_cpp_load_class", CppLoadClass);

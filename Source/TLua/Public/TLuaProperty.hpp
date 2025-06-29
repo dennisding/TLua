@@ -100,14 +100,30 @@ namespace TLua
 
 		virtual void FromLua(lua_State* State, int Index, void* Container) override
 		{
-			void* ValuePtr = Property->ContainerPtrToValuePtr<void>(Container);
-			StructProcessor->FromLua(State, Index, ValuePtr);
+			//void* ValuePtr = Property->ContainerPtrToValuePtr<void>(Container);
+			//StructProcessor->FromLua(State, Index, ValuePtr);
+			if (!LuaIsTable(State, Index)) {
+				return;
+			}
+
+			LuaGetField(State, Index, "_co");
+			void* Source = (void*)LuaGetUserData(State, -1);
+			void* Dest = Property->ContainerPtrToValuePtr<void>(Container);
+
+			Property->CopyCompleteValue(Dest, Source);
 		}
 
 		virtual void ToLua(lua_State* State, const void* Container) override
 		{
-			const void* ValuePtr = Property->ContainerPtrToValuePtr<void>(Container);
-			StructProcessor->ToLua(State, ValuePtr);
+			//const void* ValuePtr = Property->ContainerPtrToValuePtr<void>(Container);
+			//StructProcessor->ToLua(State, ValuePtr);
+
+			const void* Value = Property->ContainerPtrToValuePtr<void>(Container);
+			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
+			LuaGetGlobal(State, "_lua_get_struct");
+			LuaPushUserData(State, (void*)Value);
+			LuaPushUserData(State, (void*)Property->Struct);
+			LuaPCall(State, 3, 1);
 		}
 
 	private:
