@@ -61,7 +61,8 @@ namespace TLua
 
 		// process return
 		if (Return) {
-			Return->ToLua(State, Parameters);
+			//			Return->ToLua(State, Parameters);
+			Return->ReturnToLua(State, Parameters);
 			Return->DestroyValue_InContainer(Parameters);
 			return 1;
 		}
@@ -258,6 +259,17 @@ namespace TLua
 			return 2; // is_property, FunctionContext
 		}
 		return 0; // nil, nil, nil
+	}
+
+	// _cpp_struct_destroy(cobject, FStructProperty)
+	int CppStructDestroy(lua_State* State)
+	{ 
+		void* Object = lua_touserdata(State, 1);
+		FStructProperty* Property = (FStructProperty*)lua_touserdata(State, 2);
+
+		Property->DestroyValue(Object);
+
+		return 0;
 	}
 
 	// _cpp_enum_get_type_name(ctype)
@@ -460,6 +472,19 @@ namespace TLua
 		return 2;
 	}
 
+	// _cpp_make_vector4(x, y, z, w) -> FVector4
+	int CppMakeVector4(lua_State* State)
+	{
+		double X = lua_tonumber(State, 1);
+		double Y = lua_tonumber(State, 2);
+		double Z = lua_tonumber(State, 3);
+		double W = lua_tonumber(State, 4);
+		MakeStruct<FVector4>(State, X, Y, Z, W);
+		lua_pushlightuserdata(State, TBaseStructure<FVector4>::Get());
+		
+		return 2;
+	}
+
 	void RegisterCppLua()
 	{
 		lua_State* State = GetLuaState();
@@ -467,6 +492,7 @@ namespace TLua
 		// blueprint function lib
 		lua_register(State, "_cpp_prepare_function_libs", CppPrepareFunctionLibs);
 		lua_register(State, "_cpp_make_vector", CppMakeVector);
+		lua_register(State, "_cpp_make_vector4", CppMakeVector4);
 
 		// global use
 		lua_register(State, "_cpp_load_class", CppLoadClass);
@@ -481,6 +507,7 @@ namespace TLua
 		// struct
 		lua_register(State, "_cpp_struct_get_name", CppStructGetName);
 		lua_register(State, "_cpp_struct_get_info", CppStructGetInfo);
+		lua_register(State, "_cpp_struct_destroy", CppStructDestroy);
 
 		// object
 		lua_register(State, "_cpp_object_get_name", CppObjectGetName);

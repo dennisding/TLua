@@ -255,6 +255,11 @@ namespace TLua
 		return lua_touserdata(state, index);
 	}
 
+	void* LuaNewUserData(lua_State* State, size_t Size, int uv)
+	{
+		return lua_newuserdatauv(State, Size, uv);
+	}
+
 	int LuaGetInteger(lua_State* state, int index)
 	{
 		return lua_tointeger(state, index);

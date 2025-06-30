@@ -21,6 +21,7 @@ namespace TLua
 	TLua_API void LuaSetMetatable(lua_State* State, int Index);
 
 	TLua_API void* LuaGetUserData(lua_State* state, int index);
+	TLua_API void* LuaNewUserData(lua_State* State, size_t Size, int uv);
 	TLua_API int LuaGetInteger(lua_State* state, int index);
 	TLua_API double LuaGetNumber(lua_State* state, int index);
 	TLua_API const char* LuaGetString(lua_State* state, int index);

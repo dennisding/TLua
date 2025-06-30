@@ -15,7 +15,7 @@ namespace TLua
 	class PropertyProcessor
 	{
 	public:
-		PropertyProcessor(FProperty* InProperty) : Property(InProperty)
+		inline PropertyProcessor(FProperty* InProperty) : Property(InProperty)
 		{
 			FString OriginName = Property->GetName();
 			AnsiName = std::string(TCHAR_TO_ANSI(*OriginName));
@@ -25,6 +25,10 @@ namespace TLua
 
 		virtual void FromLua(lua_State* State, int Index, void* OutValue) = 0;
 		virtual void ToLua(lua_State* State, const void* Value) = 0;
+		inline virtual void ReturnToLua(lua_State* State, const void* Value)
+		{
+			ToLua(State, Value);
+		}
 
 	public:
 		inline const char* GetAnsiName()
@@ -92,16 +96,12 @@ namespace TLua
 		virtual ~Processor() {}
 
 		Processor(FStructProperty* InProperty) 
-			: PropertyProcessor(InProperty), Property(InProperty)//, StructProcessor(nullptr)
+			: PropertyProcessor(InProperty), Property(InProperty)
 		{
-			//UStruct* Struct = InProperty->Struct;
-			//StructProcessor = UStructProcessorMgr::Get(Struct);
 		}
 
 		virtual void FromLua(lua_State* State, int Index, void* Container) override
 		{
-			//void* ValuePtr = Property->ContainerPtrToValuePtr<void>(Container);
-			//StructProcessor->FromLua(State, Index, ValuePtr);
 			if (!LuaIsTable(State, Index)) {
 				return;
 			}
@@ -110,14 +110,17 @@ namespace TLua
 			void* Source = (void*)LuaGetUserData(State, -1);
 			void* Dest = Property->ContainerPtrToValuePtr<void>(Container);
 
-			Property->CopyCompleteValue(Dest, Source);
+			if (Property->HasAnyPropertyFlags(CPF_ReferenceParm)) {
+				*((void**)Dest) = Source;
+			}
+			else {
+				Property->SetValue_InContainer(Dest, Source);
+			}
+//			Property->CopyCompleteValue(Dest, Source);
 		}
 
 		virtual void ToLua(lua_State* State, const void* Container) override
 		{
-			//const void* ValuePtr = Property->ContainerPtrToValuePtr<void>(Container);
-			//StructProcessor->ToLua(State, ValuePtr);
-
 			const void* Value = Property->ContainerPtrToValuePtr<void>(Container);
 			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
 			LuaGetGlobal(State, "_lua_get_struct");
@@ -126,9 +129,24 @@ namespace TLua
 			LuaPCall(State, 3, 1);
 		}
 
+		virtual void ReturnToLua(lua_State* State, const void* Container) override
+		{
+			const void* Source = Property->ContainerPtrToValuePtr<void>(Container);
+			// void* Value = (void*)lua_newuserdatauv(State, Property->Struct->GetStructureSize(), 0);
+			void* Value = LuaNewUserData(State, Property->Struct->GetStructureSize(), 0);
+			Property->CopyCompleteValue(Value, Source); // how to free ???
+
+
+			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
+			LuaGetGlobal(State, "_lua_get_struct");
+			LuaPushUserData(State, (void*)Value);
+			LuaPushUserData(State, (void*)Property->Struct);
+			LuaPushUserData(State, (void*)Property);
+			LuaPCall(State, 4, 1);
+		}
+
 	private:
 		FStructProperty* Property;
-//		StructTypeProcessor* StructProcessor;
 	};
 
 	template <>
