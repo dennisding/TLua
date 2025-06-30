@@ -30,6 +30,11 @@ namespace TLua
 			ToLua(State, Value);
 		}
 
+		inline virtual void DestroyValue(void* Container, lua_State* State, int Index)
+		{
+			DestroyValue_InContainer(Container);
+		}
+
 	public:
 		inline const char* GetAnsiName()
 		{
@@ -108,14 +113,17 @@ namespace TLua
 
 			LuaGetField(State, Index, "_co");
 			void* Source = (void*)LuaGetUserData(State, -1);
-			void* Dest = Property->ContainerPtrToValuePtr<void>(Container);
+			LuaPop(State, 1);
 
-			if (Property->HasAnyPropertyFlags(CPF_ReferenceParm)) {
-				*((void**)Dest) = Source;
-			}
-			else {
-				Property->SetValue_InContainer(Dest, Source);
-			}
+//			void* Dest = Property->ContainerPtrToValuePtr<void>(Container);
+
+			Property->SetValue_InContainer(Container, Source);
+			//if (Property->HasAnyPropertyFlags(CPF_ReferenceParm)) {
+			//	*((void**)Dest) = Source;
+			//}
+			//else {
+			//	Property->SetValue_InContainer(Dest, Source);
+			//}
 //			Property->CopyCompleteValue(Dest, Source);
 		}
 
@@ -134,8 +142,7 @@ namespace TLua
 			const void* Source = Property->ContainerPtrToValuePtr<void>(Container);
 			// void* Value = (void*)lua_newuserdatauv(State, Property->Struct->GetStructureSize(), 0);
 			void* Value = LuaNewUserData(State, Property->Struct->GetStructureSize(), 0);
-			Property->CopyCompleteValue(Value, Source); // how to free ???
-
+			Property->CopyCompleteValue(Value, Source); 
 
 			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
 			LuaGetGlobal(State, "_lua_get_struct");
@@ -143,6 +150,37 @@ namespace TLua
 			LuaPushUserData(State, (void*)Property->Struct);
 			LuaPushUserData(State, (void*)Property);
 			LuaPCall(State, 4, 1);
+		}
+
+		virtual void DestroyValue(void* Container, lua_State* State, int Index) override
+		{
+			if (!LuaIsTable(State, Index)) {
+				Property->DestroyValue_InContainer(Container);
+				return;
+			}
+
+			if (Property->HasAnyPropertyFlags(CPF_ReferenceParm)) {
+				// copy back the reference
+				LuaGetField(State, Index, "_co");
+				void* LuaValue = (void*)LuaGetUserData(State, -1);
+				LuaPop(State, 1);
+
+				void* CppValue = Property->ContainerPtrToValuePtr<void*>(Container);
+				Property->CopyCompleteValue(LuaValue, CppValue);
+			}
+			
+			Property->DestroyValue_InContainer(Container);
+
+			//			void* Dest = Property->ContainerPtrToValuePtr<void>(Container);
+
+//			Property->SetValue_InContainer(Container, Source);
+			//if (Property->HasAnyPropertyFlags(CPF_ReferenceParm)) {
+			//	*((void**)Dest) = Source;
+			//}
+			//else {
+			//	Property->SetValue_InContainer(Dest, Source);
+			//}
+//			Property->CopyCompleteValue(Dest, Source);
 		}
 
 	private:

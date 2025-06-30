@@ -65,7 +65,7 @@ namespace TLua
 
 			Delegate->ProcessDelegate<UObject>(Parameters);
 
-			return Function.FreeParameter(Parameters, State);
+			return Function.FreeParameter(Parameters, State, ArgStartIndex);
 		}
 
 		virtual void Bind(void* Self, lua_State* State, int AbsIndex) override
@@ -99,7 +99,7 @@ namespace TLua
 
 			Delegate->ProcessMulticastDelegate<UObject>(Parameters);
 
-			return Function.FreeParameter(Parameters, State);
+			return Function.FreeParameter(Parameters, State, ArgStartIndex);
 		}
 
 		virtual void Bind(void* Self, lua_State* State, int AbsIndex) override

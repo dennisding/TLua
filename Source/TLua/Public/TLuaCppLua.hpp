@@ -17,7 +17,7 @@ namespace TLua
 		int Call(lua_State* State, UObject* Object);
 
 		void FillParameters(void* Parameters, lua_State* State, int ArgStartIndex);
-		int FreeParameter(void* Parameters, lua_State* State);
+		int FreeParameter(void* Parameters, lua_State* State, int ArgStartIndex);
 
 	private:
 		void ProcessParameterProperty();

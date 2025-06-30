@@ -25,12 +25,13 @@ namespace TLua
 	// _cpp_object_call(Object, Context, args...)
 	int FunctionContext::Call(lua_State* State, UObject* Object)
 	{
+		int ArgStartIndex = 3;
 		void* Parameters = (void*)FMemory_Alloca(Function->ParmsSize);
-		FillParameters(Parameters, State, 3);
+		FillParameters(Parameters, State, ArgStartIndex);
 
 		Object->ProcessEvent(Function, Parameters);
 
-		return FreeParameter(Parameters, State);
+		return FreeParameter(Parameters, State, ArgStartIndex);
 	}
 
 	void FunctionContext::FillParameters(void* Parameters, lua_State* State, int ArgStartIndex)
@@ -52,12 +53,26 @@ namespace TLua
 		}
 	}
 
-	int FunctionContext::FreeParameter(void* Parameters, lua_State* State)
+	int FunctionContext::FreeParameter(void* Parameters, lua_State* State, int ArgStartIndex)
 	{
 		// free parameter
-		for (PropertyProcessor* Processor : ParameterProcessors) {
-			Processor->DestroyValue_InContainer(Parameters);
+		int LuaTop = LuaGetTop(State);
+		for (int Index = 0; Index < ParameterProcessors.Num(); ++Index) {
+			// _cpp_object_call_fun(self, fun_context, args...)
+			PropertyProcessor* Processor = ParameterProcessors[Index];
+
+			int LuaIndex = Index + ArgStartIndex;
+			if (LuaIndex <= LuaTop) {
+				Processor->DestroyValue(Parameters, State, LuaIndex);
+			}
+			else {
+				Processor->DestroyValue_InContainer(Parameters);
+//				Processor->Property->InitializeValue_InContainer(Parameters);
+			}
 		}
+		//for (PropertyProcessor* Processor : ParameterProcessors) {
+		//	Processor->DestroyValue_InContainer(Parameters);
+		//}
 
 		// process return
 		if (Return) {
