@@ -2,6 +2,7 @@
 
 #include <map>
 #include "Lua/lua.hpp"
+#include "TLuaCppLua.hpp"
 
 #include "CoreMinimal.h"
 #include "TLuaRootObject.generated.h"
@@ -34,12 +35,15 @@ public:
 	UTLuaCallback();
 	~UTLuaCallback();
 
-	void Bind(int AbsIndex);
+	void Bind(TLua::FunctionContext* InCallbackContext, int AbsIndex);
 
 	UFUNCTION()
 	void Callback();
 
+	virtual void ProcessEvent(UFunction* Function, void* Parameters) override;
+
 public:
+	TLua::FunctionContext* CallbackContext;
 };
 
 class FCallbackMgr

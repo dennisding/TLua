@@ -73,7 +73,7 @@ namespace TLua
 			FScriptDelegate* Delegate = (FScriptDelegate*)Self;
 
 			UTLuaCallback* Object = NewObject<UTLuaCallback>();
-			Object->Bind(AbsIndex);
+			Object->Bind(&Function, AbsIndex);
 			Delegate->BindUFunction(Object, TEXT("Callback"));
 		}
 
@@ -107,7 +107,7 @@ namespace TLua
 			FMulticastScriptDelegate* Delegate = (FMulticastScriptDelegate*)Self;
 
 			UTLuaCallback* Object = NewObject<UTLuaCallback>();
-			Object->Bind(AbsIndex);
+			Object->Bind(&Function, AbsIndex);
 
 			FScriptDelegate InDelegate;
 			InDelegate.BindUFunction(Object, TEXT("Callback"));

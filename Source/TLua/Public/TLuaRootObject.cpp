@@ -119,7 +119,7 @@ void FCallbackMgr::Tick(float Delta)
 	}
 }
 
-UTLuaCallback::UTLuaCallback()
+UTLuaCallback::UTLuaCallback() : CallbackContext(nullptr)
 {
 }
 
@@ -133,8 +133,10 @@ UTLuaCallback::~UTLuaCallback()
 	lua_settable(State, LUA_REGISTRYINDEX);
 }
 
-void UTLuaCallback::Bind(int AbsIndex)
+void UTLuaCallback::Bind(TLua::FunctionContext* InCallbackContext, int AbsIndex)
 {
+	CallbackContext = InCallbackContext;
+
 	lua_State* State = TLua::GetLuaState();
 	lua_pushlightuserdata(State, this);
 	lua_pushvalue(State, AbsIndex);
@@ -149,6 +151,18 @@ void UTLuaCallback::Callback()
 	lua_gettable(State, LUA_REGISTRYINDEX);
 
 	lua_pcall(State, 1, 0, 0);
+}
+
+void UTLuaCallback::ProcessEvent(UFunction* Function, void* Parameters)
+{
+	lua_State* State = TLua::GetLuaState();
+	lua_getglobal(State, TLUA_TRACE_CALL_NAME);
+	lua_pushlightuserdata(State, this);
+	lua_gettable(State, LUA_REGISTRYINDEX);
+
+	const int ExtraParameter = 1;
+
+	CallbackContext->CallLua(ExtraParameter, Parameters);
 }
 
 UTLuaRootObject::UTLuaRootObject()

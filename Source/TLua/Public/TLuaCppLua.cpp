@@ -34,6 +34,31 @@ namespace TLua
 		return FreeParameter(Parameters, State, ArgStartIndex);
 	}
 
+	void FunctionContext::CallLua(int ExtraParameter, void* Parameters)
+	{
+		lua_State* State = GetLuaState();
+
+		// push parameter to lua
+		for (auto Processor : ParameterProcessors) {
+			Processor->ToLua(State, Parameters);
+		}
+
+		int ParameterNumber = ParameterProcessors.Num() + ExtraParameter;
+		int ReturnNumber = 0;
+		if (Return) {
+			ReturnNumber = 1;
+		}
+
+		// call the lua method
+		lua_call(State, ParameterNumber, ReturnNumber);
+
+		// set the return
+		if (Return) {
+			Return->FromLua(State, -1, Parameters);
+		}
+
+	}
+
 	void FunctionContext::FillParameters(void* Parameters, lua_State* State, int ArgStartIndex)
 	{
 		FMemory::Memzero(Parameters, Function->ParmsSize);
@@ -58,7 +83,6 @@ namespace TLua
 		// free parameter
 		int LuaTop = LuaGetTop(State);
 		for (int Index = 0; Index < ParameterProcessors.Num(); ++Index) {
-			// _cpp_object_call_fun(self, fun_context, args...)
 			PropertyProcessor* Processor = ParameterProcessors[Index];
 
 			int LuaIndex = Index + ArgStartIndex;
@@ -67,16 +91,11 @@ namespace TLua
 			}
 			else {
 				Processor->DestroyValue_InContainer(Parameters);
-//				Processor->Property->InitializeValue_InContainer(Parameters);
 			}
 		}
-		//for (PropertyProcessor* Processor : ParameterProcessors) {
-		//	Processor->DestroyValue_InContainer(Parameters);
-		//}
 
 		// process return
 		if (Return) {
-			//			Return->ToLua(State, Parameters);
 			Return->ReturnToLua(State, Parameters);
 			Return->DestroyValue_InContainer(Parameters);
 			return 1;

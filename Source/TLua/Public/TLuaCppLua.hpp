@@ -15,6 +15,7 @@ namespace TLua
 
 		// _cpp_object_call(Object, Context, args...)
 		int Call(lua_State* State, UObject* Object);
+		void CallLua(int ExtraParameter, void* Parameters);
 
 		void FillParameters(void* Parameters, lua_State* State, int ArgStartIndex);
 		int FreeParameter(void* Parameters, lua_State* State, int ArgStartIndex);
