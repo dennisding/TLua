@@ -454,6 +454,20 @@ namespace TLua
 		return 0;
 	}
 
+	int CppPrepareSubsystem(lua_State* State)
+	{
+		TArray<UClass*> Childs;
+		GetDerivedClasses(USubsystem::StaticClass(), Childs);
+
+		for (UClass* Child : Childs) {
+			FTCHARToUTF8 Convert(Child->GetName());
+			std::string Name(Convert.Get(), Convert.Length());
+			Call("_lua_add_subsystem", Name, (void*)Child);
+		}
+
+		return 0;
+	}
+
 	template <typename Type>
 	int CppFreeStruct(lua_State* State)
 	{
@@ -506,6 +520,7 @@ namespace TLua
 
 		// blueprint function lib
 		lua_register(State, "_cpp_prepare_function_libs", CppPrepareFunctionLibs);
+		lua_register(State, "_cpp_prepare_subsystem", CppPrepareSubsystem);
 		lua_register(State, "_cpp_make_vector", CppMakeVector);
 		lua_register(State, "_cpp_make_vector4", CppMakeVector4);
 

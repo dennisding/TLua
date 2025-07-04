@@ -261,6 +261,10 @@ namespace TLua
 
 		inline static UObject* FromLua(lua_State* State, int Index)
 		{
+			if (!LuaIsTable(State, Index)) {
+				return (UObject*)LuaGetUserData(State, Index);
+			}
+
 			LuaGetField(State, Index, "_co");
 			UObject* Result = (UObject*)LuaGetUserData(State, -1);
 			LuaPop(State, 1);
@@ -300,7 +304,7 @@ namespace TLua
 
 		inline static void ToLua(lua_State* State, const ValueType& Value)
 		{
-			TypeInfo<RealType>::ToLua(State, Value);
+			TypeInfo<RealType>::ToLua(State, Value.Get());
 		}
 	};
 
@@ -444,6 +448,11 @@ namespace TLua
 
 		inline static void ToLua(lua_State* State, const Type& Value)
 		{
+			if (!Value) {
+				LuaPushNil(State);
+				return;
+			}
+
 			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
 			LuaGetGlobal(State, "_lua_get_com");
 			LuaPushUserData(State, Value);
@@ -474,6 +483,11 @@ namespace TLua
 
 		inline static void ToLua(lua_State* State, const Type& Value)
 		{
+			if (!Value) {
+				LuaPushNil(State);
+				return;
+			}
+
 			LuaGetGlobal(State, TLUA_TRACE_CALL_NAME);
 			LuaGetGlobal(State, "_lua_get_actor");
 			LuaPushUserData(State, Value);
@@ -496,6 +510,25 @@ namespace TLua
 		}
 
 		inline static void ToLua(lua_State* State, const FWeakObjectPtr& Value)
+		{
+			TypeInfo<UObject*>::ToLua(State, Value.Get());
+		}
+	};
+
+	template <>
+	struct TypeInfo<FSoftObjectPtr>
+	{
+		inline static void FromLua(lua_State* State, int Index, FSoftObjectPtr& OutValue)
+		{
+			OutValue = FromLua(State, Index);
+		}
+
+		inline static FSoftObjectPtr FromLua(lua_State* State, int Index)
+		{
+			return FSoftObjectPtr(TypeInfo<UObject*>::FromLua(State, Index));
+		}
+
+		inline static void ToLua(lua_State* State, const FSoftObjectPtr& Value)
 		{
 			TypeInfo<UObject*>::ToLua(State, Value.Get());
 		}

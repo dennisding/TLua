@@ -115,16 +115,7 @@ namespace TLua
 			void* Source = (void*)LuaGetUserData(State, -1);
 			LuaPop(State, 1);
 
-//			void* Dest = Property->ContainerPtrToValuePtr<void>(Container);
-
 			Property->SetValue_InContainer(Container, Source);
-			//if (Property->HasAnyPropertyFlags(CPF_ReferenceParm)) {
-			//	*((void**)Dest) = Source;
-			//}
-			//else {
-			//	Property->SetValue_InContainer(Dest, Source);
-			//}
-//			Property->CopyCompleteValue(Dest, Source);
 		}
 
 		virtual void ToLua(lua_State* State, const void* Container) override
@@ -140,7 +131,6 @@ namespace TLua
 		virtual void ReturnToLua(lua_State* State, const void* Container) override
 		{
 			const void* Source = Property->ContainerPtrToValuePtr<void>(Container);
-			// void* Value = (void*)lua_newuserdatauv(State, Property->Struct->GetStructureSize(), 0);
 			void* Value = LuaNewUserData(State, Property->Struct->GetStructureSize(), 0);
 			Property->CopyCompleteValue(Value, Source); 
 
@@ -170,17 +160,6 @@ namespace TLua
 			}
 			
 			Property->DestroyValue_InContainer(Container);
-
-			//			void* Dest = Property->ContainerPtrToValuePtr<void>(Container);
-
-//			Property->SetValue_InContainer(Container, Source);
-			//if (Property->HasAnyPropertyFlags(CPF_ReferenceParm)) {
-			//	*((void**)Dest) = Source;
-			//}
-			//else {
-			//	Property->SetValue_InContainer(Dest, Source);
-			//}
-//			Property->CopyCompleteValue(Dest, Source);
 		}
 
 	private:
@@ -304,9 +283,31 @@ namespace TLua
 	template <typename DispatcherType>
 	void DispatchProperty(FProperty* Property, DispatcherType& Dispatcher)
 	{
-		if (auto* IntProperty = CastField<FIntProperty>(Property))
+		if (auto* Int8Property = CastField<FInt8Property>(Property)) {
+			Dispatcher.Visit(Int8Property);
+		}
+		else if (auto* Int16Property = CastField<FInt16Property>(Property)) {
+			Dispatcher.Visit(Int16Property);
+		}
+		else if (auto* IntProperty = CastField<FIntProperty>(Property))
 		{
 			Dispatcher.Visit(IntProperty);
+		}
+		else if (auto* Int64Property = CastField<FInt64Property>(Property)) {
+			Dispatcher.Visit(Int64Property);
+		}
+		else if (auto* ByteProperty = CastField<FByteProperty>(Property))
+		{
+			Dispatcher.Visit(ByteProperty);
+		}
+		else if (auto* UInt16Property = CastField<FUInt16Property>(Property)) {
+			Dispatcher.Visit(UInt16Property);
+		}
+		else if (auto* UInt32Property = CastField<FUInt32Property>(Property)) {
+			Dispatcher.Visit(UInt32Property);
+		}
+		else if (auto* UInt64Property = CastField<FUInt64Property>(Property)) {
+			Dispatcher.Visit(UInt64Property);
 		}
 		else if (auto* FloatProperty = CastField<FFloatProperty>(Property))
 		{
@@ -335,10 +336,6 @@ namespace TLua
 		{
 			Dispatcher.Visit(EnumProperty);
 		}
-		else if (auto* ByteProperty = CastField<FByteProperty>(Property))
-		{
-			Dispatcher.Visit(ByteProperty);
-		}
 		else if (auto* StructProperty = CastField<FStructProperty>(Property))
 		{
 			Dispatcher.Visit(StructProperty);
@@ -349,6 +346,9 @@ namespace TLua
 		}
 		else if (auto* WeakObjectProperty = CastField<FWeakObjectProperty>(Property)) {
 			Dispatcher.Visit(WeakObjectProperty);
+		}
+		else if (auto* SoftObjectProperty = CastField<FSoftObjectProperty>(Property)) {
+			Dispatcher.Visit(SoftObjectProperty);
 		}
 		else if (auto* ArrayProperty = CastField<FArrayProperty>(Property)) {
 			Dispatcher.Visit(ArrayProperty);
